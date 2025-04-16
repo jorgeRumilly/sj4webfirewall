@@ -1,0 +1,12 @@
+{
+  "name": "sj4web/firewall",
+  "description": "Module de surveillance IP pour PrestaShop",
+  "require": {
+    "geoip2/geoip2": "^2.12"
+  },
+  "autoload": {
+    "psr-4": {
+      "Sj4webFirewall\\": "classes/"
+    }
+  }
+}

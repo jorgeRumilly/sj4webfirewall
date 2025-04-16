@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>sj4webfirewall</name>
+    <displayName>Firewall IP - SJ4WEB</displayName>
+    <version>1.0.0</version>
+    <author>SJ4WEB.FR</author>
+    <tab>administration</tab>
+    <is_configurable>1</is_configurable>
+    <need_instance>0</need_instance>
+    <bootstrap>1</bootstrap>
+    <ps_versions_compliancy>
+        <min>8.0.0</min>
+        <max>8.999.999</max>
+    </ps_versions_compliancy>
+</module>
