@@ -3,122 +3,148 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
+use Sj4webFirewall\FirewallGeo;
+
 class Sj4webFirewall extends Module
 {
     public function __construct()
     {
         $this->name = 'sj4webfirewall';
-        $this->tab = 'security';
+        $this->tab = 'administration';
         $this->version = '1.0.0';
         $this->author = 'SJ4WEB.FR';
         $this->need_instance = 0;
+        $this->bootstrap = true;
 
         parent::__construct();
 
         $this->displayName = $this->l('SJ4WEB Firewall');
-        $this->description = $this->l('Module de filtrage comportemental, IP et bots.');
+        $this->description = $this->l('Module de filtrage comportemental, IP, bots et pays.');
     }
 
+    /**
+     * Installation du module : enregistrement des hooks.
+     */
     public function install()
     {
         return parent::install() && $this->registerHook('displayBeforeHeader');
     }
 
+    /**
+     * Désinstallation du module.
+     */
+    public function uninstall()
+    {
+        return parent::uninstall();
+    }
+
+    /**
+     * Hook exécuté avant l'affichage de la page : point d'entrée du filtrage.
+     */
     public function hookDisplayBeforeHeader()
     {
+        $config = require_once __DIR__.'/config/default_config.php';
+        require_once __DIR__.'/classes/FirewallGeo.php';
+
         $ip = Tools::getRemoteAddr();
         $userAgent = Tools::getUserAgent();
 
-        // Liste des IP autorisées (whitelist)
-        $allowedIPs = [
-            '88.125.107.215',
-            '31.35.195.23',
-            '91.172.92.135',
-        ];
-
-        // Ranges IPv6 simples (à étendre avec validation CIDR si besoin)
-        $allowedIP6Prefixes = [
-            '2a01:e0a:55a:f5e0::',
-            '2001:861:43c0:3170::'
-        ];
-
-        // Bots SEO acceptés
-        $safeBots = [
-            'googlebot', 'bingbot', 'duckduckbot', 'yandexbot', 'baiduspider', 'msnbot',
-            'slurp', 'facebot', 'ia_archiver'
-        ];
-
-        // Bots ou agents suspects connus
-        $maliciousBots = [
-            'ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'rogerbot', 'linkpadbot',
-            'screaming frog seo spider', 'sitebulb', 'seokicks-robot', 'linkchecker',
-            'netpeak spider', 'buzzbot', 'spbot', 'curl', 'python-requests', 'wget',
-            'oppo\\sa33', '(?:c99|php|web)shell', 'site.{0,2}copier', 'base64_decode',
-            'bin/bash', 'disconnect', 'eval', 'unserializ', 'libwww-perl', 'pycurl',
-            'scan', 'ahref', 'acapbot', 'acoonbot', 'alexibot', 'asterias', 'attackbot',
-            'babbar', 'barkrowler', 'backdorbot', 'becomebot', 'binlar', 'blackwidow',
-            'blekkobot', 'blexbot', 'blowfish', 'bullseye', 'bunnys', 'butterfly',
-            'bytespider', 'careerbot', 'casper', 'checkpriv', 'cheesebot', 'cherrypick',
-            'chinaclaw', 'choppy', 'clshttp', 'cmsworld', 'copernic', 'copyrightcheck',
-            'cosmos', 'crescent', 'cy_cho', 'datacha', 'demon', 'diavol', 'discobot',
-            'dittospyder', 'dotbot', 'dotnetdotcom', 'dumbot', 'econtext',
-            'emailcollector', 'emailsiphon', 'emailwolf', 'eolasbot', 'eventures',
-            'extract', 'eyenetie', 'feedfinder', 'flaming', 'flashget', 'flicky',
-            'foobot', 'fuck', 'g00g1e', 'getright', 'gigabot', 'go-ahead-got', 'gozilla',
-            'grabnet', 'grafula', 'harvest', 'heritrix', 'httracks?', 'icarus6j', 'jetbot',
-            'jetcar', 'jikespider', 'kmccrew', 'leechftp', 'libweb', 'liebaofast',
-            'linkscan', 'linkwalker', 'loader', 'lwp-download', 'majestic', 'masscan',
-            'miner', 'mechanize', 'mj12bot', 'morfeus', 'moveoverbot', 'netmechanic',
-            'netspider', 'nicerspro', 'nikto', 'ninja', 'nominet', 'nutch', 'octopus',
-            'pagegrabber', 'planetwork', 'postrank', 'proximic', 'purebot', 'queryn',
-            'queryseeker', 'radian6', 'radiation', 'realdownload', 'remoteview',
-            'rogerbot', 'scan', 'scooter', 'seekerspid', 'serpstatbot', 'semalt',
-            'siclab', 'sindice', 'sistrix', 'sitebot', 'siteexplorer', 'sitesnagger',
-            'skygrid', 'smartdownload', 'snoopy', 'sosospider', 'spankbot', 'spbot',
-            'sqlmap', 'stackrambler', 'stripper', 'sucker', 'surftbot', 'sux0r',
-            'suzukacz', 'suzuran', 'takeout', 'teleport', 'telesoft', 'true_robots',
-            'turingos', 'turnit', 'vampire', 'vikspider', 'voideye', 'webleacher',
-            'webreaper', 'webstripper', 'webvac', 'webviewer', 'webwhacker', 'winhttp',
-            'wwwoffle', 'woxbot', 'xaldon', 'xxxyy', 'yamanalab', 'yioopbot', 'youda',
-            'zeus', 'zmeu', 'zune', 'zyborg', '80legs', 'curl', 'wget', 'python-requests',
-            'python-urllib', 'scrapy', 'httpclient', 'nikto', 'libwww-perl', 'nmap',
-            'fimap', 'httprint', 'httprecon', 'zmeu', 'bcrawl', 'blackwidow', 'paros',
-            'w3af', 'nessus', 'whatweb', 'openvas', 'sf', 'jaeles', 'arachni', 'acunetix',
-            'netsparker', 'dirbuster', 'dirb', 'gobuster', 'webscarab', 'webshag',
-            'metasploit', 'sqlninja', 'sqlsus', 'sqlbrute', 'sqlpwn', 'sqliv', 'sqlmap',
-            'sqlmate', 'sqlscan', 'sqlsec', 'sqlsploit', 'sqltool', 'sqlworm', 'sqlx',
-            'sqlz'
-        ];
-
-        // Vérification whitelist IP
-        if (in_array($ip, $allowedIPs)) {
+        // 1. Vérification des IPs autorisées (whitelist)
+        if ($this->isIpWhitelisted($ip, $config['SJ4WEB_FW_WHITELIST_IPS'])) {
             return;
         }
 
-        foreach ($allowedIP6Prefixes as $prefix) {
-            if (stripos($ip, $prefix) === 0) {
-                return;
-            }
+        // 2. Laisser passer les bots SEO connus
+        if ($this->isKnownSafeBot($userAgent, $config['SJ4WEB_FW_SAFEBOTS'])) {
+            return;
         }
 
-        // Vérification safe bot
+        // 3. Blocage immédiat des bots malveillants connus
+        if ($this->isMaliciousBot($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS'])) {
+            $this->logAction($ip, $userAgent, 'bot_suspect');
+            header('HTTP/1.1 403 Forbidden');
+            exit('Access denied.');
+        }
+
+        // 4. Blocage par pays si activé
+        $geo = new FirewallGeo();
+        $country = $geo->getCountryCode($ip);
+        if ($country && in_array($country, $config['SJ4WEB_FW_COUNTRIES_BLOCKED'])) {
+            $this->logAction($ip, $userAgent, 'pays_bloque: ' . $country);
+            header('HTTP/1.1 403 Forbidden');
+            exit('Access denied by country restriction.');
+        }
+
+        // 5. Optionnel : ralentissement doux pour visiteurs suspects
+        if ($config['SJ4WEB_FW_ENABLE_SLEEP']) {
+            usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
+        }
+    }
+
+    /**
+     * Vérifie si l'IP est autorisée (exacte ou préfixe IPv6).
+     */
+    protected function isIpWhitelisted($ip, array $allowedList)
+    {
+        foreach ($allowedList as $allowed) {
+            if (strpos($allowed, '/') !== false) {
+                if ($this->ipInRange($ip, $allowed)) {
+                    return true;
+                }
+            } elseif ($ip === $allowed) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Vérifie si l'user-agent appartient à un bot SEO reconnu.
+     */
+    protected function isKnownSafeBot($userAgent, array $safeBots)
+    {
         foreach ($safeBots as $bot) {
             if (stripos($userAgent, $bot) !== false) {
-                return;
+                return true;
             }
         }
+        return false;
+    }
 
-        // Vérification bots suspects ou outils de scan
+    /**
+     * Vérifie si l'user-agent appartient à un bot malveillant.
+     */
+    protected function isMaliciousBot($userAgent, array $maliciousBots)
+    {
         foreach ($maliciousBots as $bad) {
             if (stripos($userAgent, $bad) !== false) {
-                header('HTTP/1.1 403 Forbidden');
-                exit('Access denied.');
+                return true;
             }
         }
+        return false;
+    }
 
-        // Exemple : ralentir tous les agents inconnus non whitelistés
-        if ($userAgent === '' || $userAgent === '-' || strlen($userAgent) < 10) {
-            usleep(1000000); // 1 seconde
-        }
+    /**
+     * Enregistre une action suspecte dans les logs du module.
+     */
+    protected function logAction($ip, $userAgent, $reason)
+    {
+        $log = sprintf("[%s] %s - %s (%s)\n", date('Y-m-d H:i:s'), $ip, $reason, $userAgent);
+        $logFile = _PS_MODULE_DIR_.'sj4webfirewall/logs/firewall.log';
+        file_put_contents($logFile, $log, FILE_APPEND);
+    }
+
+    /**
+     * Vérifie si une IP appartient à une plage CIDR.
+     */
+    protected function ipInRange($ip, $range)
+    {
+        if (!strpos($range, '/')) return false;
+        list($subnet, $bits) = explode('/', $range);
+        $ip = ip2long($ip);
+        $subnet = ip2long($subnet);
+        $mask = -1 << (32 - $bits);
+        $subnet &= $mask;
+        return ($ip & $mask) === $subnet;
     }
 }
