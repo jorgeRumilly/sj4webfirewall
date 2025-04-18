@@ -84,6 +84,15 @@ class AdminSj4webFirewallController extends ModuleAdminController
             $val = Configuration::get($key);
             $values[$key] = is_array($val) ? implode("\n", $val) : $val;
         }
+        $link = $this->context->link->getAdminLink('AdminSj4webFirewallLog');
+
+        $html = '<div style="margin-bottom:15px;">';
+        $html .= '<a href="' . $link . '" class="btn btn-default" target="_blank">';
+        $html .= '<i class="icon icon-eye"></i> ';
+        $html .= $this->trans('Consulter les IP bloquées / scorées', [], 'Modules.Sj4webfirewall.Admin');
+        $html .= '</a>';
+        $html .= '</div>';
+
 
         $helper = new HelperForm();
         $helper->module = $this->module;
@@ -96,7 +105,7 @@ class AdminSj4webFirewallController extends ModuleAdminController
         $helper->submit_action = 'submit_sj4webfirewall';
         $helper->fields_value = $values;
 
-        return $helper->generateForm([$fields_form]);
+        return $html . $helper->generateForm([$fields_form]);
     }
 
     /**
