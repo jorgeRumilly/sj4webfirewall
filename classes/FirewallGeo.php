@@ -1,5 +1,7 @@
 <?php
-namespace Sj4webFirewall;
+if (!defined('_PS_VERSION_')) {
+    exit;
+}
 
 use GeoIp2\Database\Reader;
 

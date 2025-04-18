@@ -1,5 +1,6 @@
 <?php
 require_once dirname(__FILE__, 3) . '/config/default_config.php';
+
 class AdminSj4webFirewallController extends ModuleAdminController
 {
     public function __construct()
@@ -10,7 +11,6 @@ class AdminSj4webFirewallController extends ModuleAdminController
         $this->lang = false;
         $this->context = Context::getContext();
         $this->table = 'sj4webfirewall'; // pas utilisé ici, mais requis par Presta
-
         parent::__construct();
     }
 
@@ -22,36 +22,36 @@ class AdminSj4webFirewallController extends ModuleAdminController
         $fields_form = [
             'form' => [
                 'legend' => [
-                    'title' => $this->l('Configuration du pare-feu'),
+                    'title' => $this->trans('Configuration du pare-feu', [], 'Modules.Sj4webfirewall.Admin'),
                 ],
                 'input' => [
                     [
                         'type' => 'textarea',
-                        'label' => $this->l('IP autorisées (whitelist)'),
+                        'label' => $this->trans('IP autorisées (whitelist)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_WHITELIST_IPS',
                         'cols' => 60,
                         'rows' => 5,
-                        'desc' => $this->l('Une IP ou un range CIDR par ligne'),
+                        'desc' => $this->trans('Une IP ou un range CIDR par ligne', [], 'Modules.Sj4webfirewall.Admin'),
                     ],
                     [
                         'type' => 'textarea',
-                        'label' => $this->l('Bots autorisés (safeBots)'),
+                        'label' => $this->trans('Bots autorisés (safeBots)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_SAFEBOTS',
                         'cols' => 60,
                         'rows' => 5,
-                        'desc' => $this->l('User-Agent contenant un identifiant autorisé'),
+                        'desc' => $this->trans('User-Agent contenant un identifiant autorisé', [], 'Modules.Sj4webfirewall.Admin'),
                     ],
                     [
                         'type' => 'textarea',
-                        'label' => $this->l('Bots bloqués (maliciousBots)'),
+                        'label' => $this->trans('Bots bloqués (maliciousBots)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_MALICIOUSBOTS',
                         'cols' => 60,
                         'rows' => 8,
-                        'desc' => $this->l('User-Agent contenant un identifiant à bloquer'),
+                        'desc' => $this->trans('User-Agent contenant un identifiant à bloquer', [], 'Modules.Sj4webfirewall.Admin'),
                     ],
                     [
                         'type' => 'switch',
-                        'label' => $this->l('Activer le ralentissement (sleep)'),
+                        'label' => $this->trans('Activer le ralentissement (sleep)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_ENABLE_SLEEP',
                         'is_bool' => true,
                         'values' => [
@@ -61,20 +61,20 @@ class AdminSj4webFirewallController extends ModuleAdminController
                     ],
                     [
                         'type' => 'text',
-                        'label' => $this->l('Durée du sleep (ms)'),
+                        'label' => $this->trans('Durée du sleep (ms)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_SLEEP_DELAY_MS',
                     ],
                     [
                         'type' => 'textarea',
-                        'label' => $this->l('Pays à bloquer (codes ISO alpha-2)'),
+                        'label' => $this->trans('Pays à bloquer (codes ISO alpha-2)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_COUNTRIES_BLOCKED',
                         'cols' => 60,
                         'rows' => 3,
-                        'desc' => $this->l('Ex : RU, CN, IR'),
+                        'desc' => $this->trans('Ex : RU, CN, IR', [], 'Modules.Sj4webfirewall.Admin'),
                     ],
                 ],
                 'submit' => [
-                    'title' => $this->l('Enregistrer'),
+                    'title' => $this->trans('Enregistrer', [], 'Modules.Sj4webfirewall.Admin'),
                 ],
             ],
         ];
@@ -105,14 +105,14 @@ class AdminSj4webFirewallController extends ModuleAdminController
     public function postProcess()
     {
         if (Tools::isSubmit('submit_sj4webfirewall')) {
-            foreach (array_keys(require dirname(__FILE__, 4) . '/config/default_config.php') as $key) {
+            foreach (array_keys(require dirname(__FILE__, 3) . '/config/default_config.php') as $key) {
                 $val = Tools::getValue($key);
                 if (is_string($val) && strpos($val, "\n") !== false) {
                     $val = array_filter(array_map('trim', explode("\n", $val)));
                 }
                 Configuration::updateValue($key, $val);
             }
-            $this->confirmations[] = $this->l('Configuration enregistrée');
+            $this->confirmations[] = $this->trans('Configuration enregistrée', [], 'Modules.Sj4webfirewall.Admin');
         }
     }
 }

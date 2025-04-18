@@ -3,7 +3,8 @@ if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-use Sj4webFirewall\FirewallGeo;
+require_once __DIR__.'/classes/FirewallGeo.php';
+require_once __DIR__.'/classes/FirewallStorage.php';
 
 class Sj4webFirewall extends Module
 {
@@ -18,8 +19,8 @@ class Sj4webFirewall extends Module
 
         parent::__construct();
 
-        $this->displayName = $this->l('SJ4WEB Firewall');
-        $this->description = $this->l('Module de filtrage comportemental, IP, bots et pays.');
+        $this->displayName = $this->trans('SJ4WEB Firewall', [], 'Modules.Sj4webfirewall.Admin');
+        $this->description = $this->trans('Module de filtrage comportemental, IP, bots et pays.', [], 'Modules.Sj4webfirewall.Admin');
     }
 
     /**
@@ -43,11 +44,31 @@ class Sj4webFirewall extends Module
      */
     public function hookDisplayBeforeHeader()
     {
-        $config = require_once __DIR__.'/config/default_config.php';
-        require_once __DIR__.'/classes/FirewallGeo.php';
+        $config = [];
+        foreach (array_keys(require __DIR__.'/config/default_config.php') as $key) {
+            $val = Configuration::get($key);
+            if (is_string($val) && strpos($val, "\n") !== false) {
+                $config[$key] = array_map('trim', explode("\n", $val));
+            } else {
+                $config[$key] = $val;
+            }
+        }
 
         $ip = Tools::getRemoteAddr();
         $userAgent = Tools::getUserAgent();
+
+        $storage = new FirewallStorage(
+            (int)$config['SJ4WEB_FW_SCORE_LIMIT_BLOCK'],
+            (int)$config['SJ4WEB_FW_SCORE_LIMIT_SLOW'],
+            (int)$config['SJ4WEB_FW_BLOCK_DURATION']
+        );
+
+        $status = $storage->getStatusForIp($ip);
+        if ($status === 'blocked') {
+            $storage->logEvent($ip, 'IP bloquée par score');
+            header('HTTP/1.1 403 Forbidden');
+            exit('Access denied.');
+        }
 
         // 1. Vérification des IPs autorisées (whitelist)
         if ($this->isIpWhitelisted($ip, $config['SJ4WEB_FW_WHITELIST_IPS'])) {
@@ -61,6 +82,8 @@ class Sj4webFirewall extends Module
 
         // 3. Blocage immédiat des bots malveillants connus
         if ($this->isMaliciousBot($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS'])) {
+            $storage->updateScore($ip, -20);
+            $storage->logEvent($ip, 'bot_suspect');
             $this->logAction($ip, $userAgent, 'bot_suspect');
             header('HTTP/1.1 403 Forbidden');
             exit('Access denied.');
@@ -70,6 +93,8 @@ class Sj4webFirewall extends Module
         $geo = new FirewallGeo();
         $country = $geo->getCountryCode($ip);
         if ($country && in_array($country, $config['SJ4WEB_FW_COUNTRIES_BLOCKED'])) {
+            $storage->updateScore($ip, -10);
+            $storage->logEvent($ip, 'pays_bloque: ' . $country);
             $this->logAction($ip, $userAgent, 'pays_bloque: ' . $country);
             header('HTTP/1.1 403 Forbidden');
             exit('Access denied by country restriction.');
@@ -77,6 +102,7 @@ class Sj4webFirewall extends Module
 
         // 5. Optionnel : ralentissement doux pour visiteurs suspects
         if ($config['SJ4WEB_FW_ENABLE_SLEEP']) {
+            $storage->logEvent($ip, 'ralenti: score faible');
             usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
         }
     }
@@ -146,5 +172,10 @@ class Sj4webFirewall extends Module
         $mask = -1 << (32 - $bits);
         $subnet &= $mask;
         return ($ip & $mask) === $subnet;
+    }
+
+    public function isUsingNewTranslationSystem()
+    {
+        return true;
     }
 }
