@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__FILE__, 3) . '/config/default_config.php';
+require_once _PS_MODULE_DIR_ . 'sj4webfirewall/classes/Sj4webFirewallConfigHelper.php';
 
 class AdminSj4webFirewallController extends ModuleAdminController
 {
@@ -11,8 +11,18 @@ class AdminSj4webFirewallController extends ModuleAdminController
         $this->lang = false;
         $this->context = Context::getContext();
         $this->table = 'sj4webfirewall'; // pas utilisé ici, mais requis par Presta
+        $this->displayName = $this->module->displayName;
         parent::__construct();
     }
+
+    public function initContent()
+    {
+        parent::initContent();
+        $this->context->smarty->assign([
+            'content' => $this->renderForm(),
+        ]);
+    }
+
 
     /**
      * Affiche le formulaire de configuration du module dans le BO.
@@ -79,11 +89,8 @@ class AdminSj4webFirewallController extends ModuleAdminController
             ],
         ];
 
-        $values = [];
-        foreach (array_keys(require dirname(__FILE__, 4) . '/config/default_config.php') as $key) {
-            $val = Configuration::get($key);
-            $values[$key] = is_array($val) ? implode("\n", $val) : $val;
-        }
+        $values = Sj4webFirewallConfigHelper::getAll();
+
         $link = $this->context->link->getAdminLink('AdminSj4webFirewallLog');
 
         $html = '<div style="margin-bottom:15px;">';
@@ -114,7 +121,7 @@ class AdminSj4webFirewallController extends ModuleAdminController
     public function postProcess()
     {
         if (Tools::isSubmit('submit_sj4webfirewall')) {
-            foreach (array_keys(require dirname(__FILE__, 3) . '/config/default_config.php') as $key) {
+            foreach (Sj4webFirewallConfigHelper::getKeys() as $key) {
                 $val = Tools::getValue($key);
                 if (is_string($val) && strpos($val, "\n") !== false) {
                     $val = array_filter(array_map('trim', explode("\n", $val)));
@@ -124,4 +131,5 @@ class AdminSj4webFirewallController extends ModuleAdminController
             $this->confirmations[] = $this->trans('Configuration enregistrée', [], 'Modules.Sj4webfirewall.Admin');
         }
     }
+
 }

@@ -5,6 +5,7 @@ if (!defined('_PS_VERSION_')) {
 
 require_once __DIR__.'/classes/FirewallGeo.php';
 require_once __DIR__.'/classes/FirewallStorage.php';
+require_once __DIR__.'/classes/Sj4webFirewallConfigHelper.php';
 
 class Sj4webFirewall extends Module
 {
@@ -28,7 +29,9 @@ class Sj4webFirewall extends Module
      */
     public function install()
     {
-        return parent::install() && $this->registerHook('displayBeforeHeader');
+        return parent::install() &&
+            $this->registerHook('displayBackOfficeHeader') &&
+            $this->registerHook('displayBeforeHeader');
     }
 
     /**
@@ -39,18 +42,40 @@ class Sj4webFirewall extends Module
         return parent::uninstall();
     }
 
+    public function getContent()
+    {
+        Tools::redirectAdmin($this->context->link->getAdminLink('AdminSj4webFirewall'));
+    }
+
+    public function hookDisplayBackOfficeHeader()
+    {
+        if (Tools::getValue('controller') === 'AdminSj4webFirewall') {
+            $this->context->controller->addCss($this->_path . 'views/css/sjfirewall_admin.css');
+        }
+    }
+
+
     /**
      * Hook exécuté avant l'affichage de la page : point d'entrée du filtrage.
      */
     public function hookDisplayBeforeHeader()
     {
-        $config = [];
-        foreach (array_keys(require __DIR__.'/config/default_config.php') as $key) {
-            $val = Configuration::get($key);
-            if (is_string($val) && strpos($val, "\n") !== false) {
-                $config[$key] = array_map('trim', explode("\n", $val));
-            } else {
-                $config[$key] = $val;
+//        $config = [];
+//        foreach (array_keys(require __DIR__.'/config/default_config.php') as $key) {
+//            $val = Configuration::get($key);
+//            if (is_string($val) && strpos($val, "\n") !== false) {
+//                $config[$key] = array_map('trim', explode("\n", $val));
+//            } else {
+//                $config[$key] = $val;
+//            }
+//        }
+
+        $config = Sj4webFirewallConfigHelper::getAll();
+
+        // Parser les lignes multiples une seule fois ici si nécessaire :
+        foreach (['SJ4WEB_FW_WHITELIST_IPS', 'SJ4WEB_FW_SAFEBOTS', 'SJ4WEB_FW_MALICIOUSBOTS', 'SJ4WEB_FW_COUNTRIES_BLOCKED'] as $key) {
+            if (is_string($config[$key]) && strpos($config[$key], "\n") !== false) {
+                $config[$key] = array_map('trim', explode("\n", $config[$key]));
             }
         }
 

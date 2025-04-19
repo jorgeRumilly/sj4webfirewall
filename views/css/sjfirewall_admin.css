@@ -1,0 +1,4 @@
+textarea[name^="SJ4WEB_"] {
+    max-height: 200px !important;
+    overflow: auto;
+}
