@@ -101,14 +101,22 @@ class AdminSj4webFirewallController extends ModuleAdminController
         $html .= '</div>';
 
 
+//        $helper = new HelperForm();
+//        $helper->module = $this->module;
+//        $helper->name_controller = 'sj4webfirewall';
+//        $helper->token = Tools::getAdminTokenLite('AdminModules');
+//        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->module->name;
+//        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
+//        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ?: 0;
+//        $helper->title = $this->displayName;
+
         $helper = new HelperForm();
         $helper->module = $this->module;
-        $helper->name_controller = 'sj4webfirewall';
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->module->name;
-        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
-        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ?: 0;
-        $helper->title = $this->displayName;
+        $helper->show_toolbar = false;
+        $helper->table = $this->table;
+        $helper->identifier = $this->identifier;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminSj4webFirewall', false);
+        $helper->token = Tools::getAdminTokenLite('AdminSj4webFirewall');
         $helper->submit_action = 'submit_sj4webfirewall';
         $helper->fields_value = $values;
 
@@ -123,13 +131,24 @@ class AdminSj4webFirewallController extends ModuleAdminController
         if (Tools::isSubmit('submit_sj4webfirewall')) {
             foreach (Sj4webFirewallConfigHelper::getKeys() as $key) {
                 $val = Tools::getValue($key);
-                if (is_string($val) && strpos($val, "\n") !== false) {
-                    $val = array_filter(array_map('trim', explode("\n", $val)));
-                }
+                // on NE transforme plus en array ici !
                 Configuration::updateValue($key, $val);
             }
             $this->confirmations[] = $this->trans('Configuration enregistrée', [], 'Modules.Sj4webfirewall.Admin');
         }
     }
+//    public function postProcess()
+//    {
+//        if (Tools::isSubmit('submit_sj4webfirewall')) {
+//            foreach (Sj4webFirewallConfigHelper::getKeys() as $key) {
+//                $val = Tools::getValue($key);
+//                if (is_string($val) && strpos($val, "\n") !== false) {
+//                    $val = array_filter(array_map('trim', explode("\n", $val)));
+//                }
+//                Configuration::updateValue($key, $val);
+//            }
+//            $this->confirmations[] = $this->trans('Configuration enregistrée', [], 'Modules.Sj4webfirewall.Admin');
+//        }
+//    }
 
 }
