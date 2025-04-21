@@ -31,7 +31,7 @@ class Sj4webFirewall extends Module
     {
         return parent::install() &&
             $this->registerHook('displayBackOfficeHeader') &&
-            $this->registerHook('displayBeforeHeader');
+            $this->registerHook('displayHeader');
     }
 
     /**
@@ -39,6 +39,10 @@ class Sj4webFirewall extends Module
      */
     public function uninstall()
     {
+        foreach (Sj4webFirewallConfigHelper::getKeys() as $key) {
+            Configuration::deleteByName($key);
+        }
+
         return parent::uninstall();
     }
 
@@ -58,78 +62,74 @@ class Sj4webFirewall extends Module
     /**
      * Hook exécuté avant l'affichage de la page : point d'entrée du filtrage.
      */
-    public function hookDisplayBeforeHeader()
+    public function hookDisplayHeader()
     {
-//        $config = [];
-//        foreach (array_keys(require __DIR__.'/config/default_config.php') as $key) {
-//            $val = Configuration::get($key);
-//            if (is_string($val) && strpos($val, "\n") !== false) {
-//                $config[$key] = array_map('trim', explode("\n", $val));
-//            } else {
-//                $config[$key] = $val;
-//            }
-//        }
 
         $config = Sj4webFirewallConfigHelper::getAll();
-
-        // Parser les lignes multiples une seule fois ici si nécessaire :
-        foreach (['SJ4WEB_FW_WHITELIST_IPS', 'SJ4WEB_FW_SAFEBOTS', 'SJ4WEB_FW_MALICIOUSBOTS', 'SJ4WEB_FW_COUNTRIES_BLOCKED'] as $key) {
-            if (is_string($config[$key]) && strpos($config[$key], "\n") !== false) {
-                $config[$key] = array_map('trim', explode("\n", $config[$key]));
-            }
-        }
-
         $ip = Tools::getRemoteAddr();
-        $userAgent = Tools::getUserAgent();
+        $userAgent = $this->getUserAgent();
+         try {
+             // Parser les lignes multiples une seule fois ici si nécessaire :
+             foreach (['SJ4WEB_FW_WHITELIST_IPS', 'SJ4WEB_FW_SAFEBOTS', 'SJ4WEB_FW_MALICIOUSBOTS', 'SJ4WEB_FW_COUNTRIES_BLOCKED'] as $key) {
+                 if (is_string($config[$key]) && strpos($config[$key], "\n") !== false) {
+                     $config[$key] = array_map('trim', explode("\n", $config[$key]));
+                 }
+             }
 
-        $storage = new FirewallStorage(
-            (int)$config['SJ4WEB_FW_SCORE_LIMIT_BLOCK'],
-            (int)$config['SJ4WEB_FW_SCORE_LIMIT_SLOW'],
-            (int)$config['SJ4WEB_FW_BLOCK_DURATION']
-        );
+             $storage = new FirewallStorage(
+                 (int)$config['SJ4WEB_FW_SCORE_LIMIT_BLOCK'],
+                 (int)$config['SJ4WEB_FW_SCORE_LIMIT_SLOW'],
+                 (int)$config['SJ4WEB_FW_BLOCK_DURATION']
+             );
 
-        $status = $storage->getStatusForIp($ip);
-        if ($status === 'blocked') {
-            $storage->logEvent($ip, 'IP bloquée par score');
-            header('HTTP/1.1 403 Forbidden');
-            exit('Access denied.');
-        }
+             // 1. Vérification des IPs autorisées (whitelist)
+             if ($this->isIpWhitelisted($ip, $config['SJ4WEB_FW_WHITELIST_IPS'])) {
+                 return '';
+             }
 
-        // 1. Vérification des IPs autorisées (whitelist)
-        if ($this->isIpWhitelisted($ip, $config['SJ4WEB_FW_WHITELIST_IPS'])) {
-            return;
-        }
+             // 2. Vérification des IPs bloquées (blacklist)
+             $status = $storage->getStatusForIp($ip);
+             if ($status === 'blocked') {
+                 $storage->logEvent($ip, 'IP bloquée par score');
+                 header('HTTP/1.1 403 Forbidden');
+                 exit('Access denied.');
+             }
 
-        // 2. Laisser passer les bots SEO connus
-        if ($this->isKnownSafeBot($userAgent, $config['SJ4WEB_FW_SAFEBOTS'])) {
-            return;
-        }
+             // 3. Laisser passer les bots SEO connus
+             if ($this->isKnownSafeBot($userAgent, $config['SJ4WEB_FW_SAFEBOTS'])) {
+                 return '';
+             }
 
-        // 3. Blocage immédiat des bots malveillants connus
-        if ($this->isMaliciousBot($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS'])) {
-            $storage->updateScore($ip, -20);
-            $storage->logEvent($ip, 'bot_suspect');
-            $this->logAction($ip, $userAgent, 'bot_suspect');
-            header('HTTP/1.1 403 Forbidden');
-            exit('Access denied.');
-        }
+             // 4. Blocage immédiat des bots malveillants connus
+             if ($this->isMaliciousBot($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS'])) {
+                 $storage->updateScore($ip, -20);
+                 $storage->logEvent($ip, 'bot_suspect');
+                 $this->logAction($ip, $userAgent, 'bot_suspect');
+                 header('HTTP/1.1 403 Forbidden');
+                 exit('Access denied.');
+             }
 
-        // 4. Blocage par pays si activé
-        $geo = new FirewallGeo();
-        $country = $geo->getCountryCode($ip);
-        if ($country && in_array($country, $config['SJ4WEB_FW_COUNTRIES_BLOCKED'])) {
-            $storage->updateScore($ip, -10);
-            $storage->logEvent($ip, 'pays_bloque: ' . $country);
-            $this->logAction($ip, $userAgent, 'pays_bloque: ' . $country);
-            header('HTTP/1.1 403 Forbidden');
-            exit('Access denied by country restriction.');
-        }
+             // 5. Blocage par pays si activé
+             $geo = new FirewallGeo();
+             $country = $geo->getCountryCode($ip);
+             if ($country && in_array($country, $config['SJ4WEB_FW_COUNTRIES_BLOCKED'])) {
+                 $storage->updateScore($ip, -10);
+                 $storage->logEvent($ip, 'pays_bloque: ' . $country);
+                 $this->logAction($ip, $userAgent, 'pays_bloque: ' . $country);
+                 header('HTTP/1.1 403 Forbidden');
+                 exit('Access denied by country restriction.');
+             }
 
-        // 5. Optionnel : ralentissement doux pour visiteurs suspects
-        if ($config['SJ4WEB_FW_ENABLE_SLEEP']) {
-            $storage->logEvent($ip, 'ralenti: score faible');
-            usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
-        }
+             // 6. Optionnel : ralentissement doux pour visiteurs suspects
+             if ($config['SJ4WEB_FW_ENABLE_SLEEP']) {
+                 $storage->logEvent($ip, 'ralenti: score faible');
+                 usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
+             }
+
+         } catch (Exception $e) {
+             $this->logAction($ip, $userAgent, 'Erreur execution : ' . $e->getMessage());
+         }
+         return '';
     }
 
     /**
@@ -188,15 +188,58 @@ class Sj4webFirewall extends Module
     /**
      * Vérifie si une IP appartient à une plage CIDR.
      */
+//    protected function ipInRange($ip, $range)
+//    {
+//        if (!strpos($range, '/')) return false;
+//        list($subnet, $bits) = explode('/', $range);
+//        $ip = ip2long($ip);
+//        $subnet = ip2long($subnet);
+//        $mask = -1 << (32 - $bits);
+//        $subnet &= $mask;
+//        return ($ip & $mask) === $subnet;
+//    }
     protected function ipInRange($ip, $range)
     {
-        if (!strpos($range, '/')) return false;
-        list($subnet, $bits) = explode('/', $range);
-        $ip = ip2long($ip);
-        $subnet = ip2long($subnet);
-        $mask = -1 << (32 - $bits);
-        $subnet &= $mask;
-        return ($ip & $mask) === $subnet;
+        if (!strpos($range, '/')) {
+            return false;
+        }
+
+        [$subnet, $bits] = explode('/', $range);
+
+        $ip_bin = inet_pton($ip);
+        $subnet_bin = inet_pton($subnet);
+
+        if ($ip_bin === false || $subnet_bin === false) {
+            return false;
+        }
+
+        $ip_len = strlen($ip_bin); // 4 pour IPv4, 16 pour IPv6
+        $bit_max = $ip_len * 8;
+
+        if ($bits > $bit_max) {
+            return false;
+        }
+
+        $bytes = intdiv($bits, 8);
+        $bits_remain = $bits % 8;
+
+        // Compare les octets entiers
+        if (strncmp($ip_bin, $subnet_bin, $bytes) !== 0) {
+            return false;
+        }
+
+        if ($bits_remain === 0) {
+            return true;
+        }
+
+        $mask = (0xFF << (8 - $bits_remain)) & 0xFF;
+
+        return (ord($ip_bin[$bytes]) & $mask) === (ord($subnet_bin[$bytes]) & $mask);
+    }
+
+    protected function getUserAgent()
+    {
+        return $_SERVER['HTTP_USER_AGENT'] ?? '';
     }
 
     public function isUsingNewTranslationSystem()

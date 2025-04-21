@@ -12,6 +12,16 @@ class Sj4webFirewallConfigHelper
 
     protected static $defaults = null;
 
+    public static function getMultilineKeys()
+    {
+        return [
+            'SJ4WEB_FW_WHITELIST_IPS',
+            'SJ4WEB_FW_SAFEBOTS',
+            'SJ4WEB_FW_MALICIOUSBOTS',
+            'SJ4WEB_FW_COUNTRIES_BLOCKED',
+        ];
+    }
+
     protected static function loadDefaults()
     {
         if (self::$defaults === null) {
@@ -23,10 +33,29 @@ class Sj4webFirewallConfigHelper
     {
         self::loadDefaults();
         $val = Configuration::get($key);
+
         if ($val === false && isset(self::$defaults[$key])) {
-            Configuration::updateValue($key, self::$defaults[$key]);
-            return self::$defaults[$key];
+            $val = self::$defaults[$key];
+            // Si c’est un tableau, on encode avant de stocker
+            $storedValue = in_array($key, self::getMultilineKeys(), true) && is_array($val)
+                ? json_encode($val)
+                : $val;
+
+            Configuration::updateValue($key, $storedValue);
         }
+
+        if (in_array($key, self::getMultilineKeys(), true)) {
+            // Cas pathologique : un array a été stocké directement en base
+            if (is_array($val)) {
+                // On corrige la base immédiatement
+                Configuration::updateValue($key, json_encode($val));
+                return $val;
+            }
+
+            $decoded = json_decode($val, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+
         return $val;
     }
 
@@ -34,8 +63,7 @@ class Sj4webFirewallConfigHelper
     {
         $values = [];
         foreach (self::$configKeys as $key) {
-            $val = self::get($key);
-            $values[$key] = is_array($val) ? implode("\n", $val) : $val;
+            $values[$key] = self::get($key);
         }
         return $values;
     }

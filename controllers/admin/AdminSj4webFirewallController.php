@@ -91,6 +91,13 @@ class AdminSj4webFirewallController extends ModuleAdminController
 
         $values = Sj4webFirewallConfigHelper::getAll();
 
+        foreach (Sj4webFirewallConfigHelper::getMultilineKeys() as $key) {
+            if (isset($values[$key]) && is_array($values[$key])) {
+                $values[$key] = implode("\n", $values[$key]);
+            }
+        }
+
+
         $link = $this->context->link->getAdminLink('AdminSj4webFirewallLog');
 
         $html = '<div style="margin-bottom:15px;">';
@@ -99,16 +106,6 @@ class AdminSj4webFirewallController extends ModuleAdminController
         $html .= $this->trans('Consulter les IP bloquées / scorées', [], 'Modules.Sj4webfirewall.Admin');
         $html .= '</a>';
         $html .= '</div>';
-
-
-//        $helper = new HelperForm();
-//        $helper->module = $this->module;
-//        $helper->name_controller = 'sj4webfirewall';
-//        $helper->token = Tools::getAdminTokenLite('AdminModules');
-//        $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->module->name;
-//        $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
-//        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ?: 0;
-//        $helper->title = $this->displayName;
 
         $helper = new HelperForm();
         $helper->module = $this->module;
@@ -131,24 +128,18 @@ class AdminSj4webFirewallController extends ModuleAdminController
         if (Tools::isSubmit('submit_sj4webfirewall')) {
             foreach (Sj4webFirewallConfigHelper::getKeys() as $key) {
                 $val = Tools::getValue($key);
-                // on NE transforme plus en array ici !
+
+                if (in_array($key, Sj4webFirewallConfigHelper::getMultilineKeys(), true)) {
+                    $val = array_filter(array_map('trim', explode("\n", $val)));
+                    $val = json_encode($val); // important ici
+                }
+
                 Configuration::updateValue($key, $val);
             }
+
             $this->confirmations[] = $this->trans('Configuration enregistrée', [], 'Modules.Sj4webfirewall.Admin');
         }
     }
-//    public function postProcess()
-//    {
-//        if (Tools::isSubmit('submit_sj4webfirewall')) {
-//            foreach (Sj4webFirewallConfigHelper::getKeys() as $key) {
-//                $val = Tools::getValue($key);
-//                if (is_string($val) && strpos($val, "\n") !== false) {
-//                    $val = array_filter(array_map('trim', explode("\n", $val)));
-//                }
-//                Configuration::updateValue($key, $val);
-//            }
-//            $this->confirmations[] = $this->trans('Configuration enregistrée', [], 'Modules.Sj4webfirewall.Admin');
-//        }
-//    }
+
 
 }

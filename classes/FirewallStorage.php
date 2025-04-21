@@ -17,12 +17,19 @@ class FirewallStorage
      */
     public function __construct($scoreLimitBlock = -40, $scoreLimitSlow = -10, $blockDuration = 3600)
     {
-        $this->filepath = _PS_MODULE_DIR_.'sj4webfirewall/logs/ip_scores.json';
+        $logsDir = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/';
+
+        if (!is_dir($logsDir)) {
+            mkdir($logsDir, 0755, true);
+        }
+
+        $this->filepath = $logsDir . 'ip_scores.json';
         $this->scoreLimitBlock = $scoreLimitBlock;
         $this->scoreLimitSlow = $scoreLimitSlow;
         $this->blockDuration = $blockDuration;
         $this->load();
     }
+
 
     /**
      * Retourne le statut actuel d'une IP : normal, slow, ou blocked.
