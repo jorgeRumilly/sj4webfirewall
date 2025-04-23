@@ -9,6 +9,10 @@ class Sj4webFirewallConfigHelper
         'SJ4WEB_FW_ACTIVATE_FIREWALL',
         'SJ4WEB_FW_SLEEP_DELAY_MS',
         'SJ4WEB_FW_COUNTRIES_BLOCKED',
+        'SJ4WEB_FW_SCORE_LIMIT_SLOW',
+        'SJ4WEB_FW_BLOCK_DURATION',
+        'SJ4WEB_FW_SCORE_LIMIT_BLOCK',
+        'SJ4WEB_FW_LOG_ENABLED'
     ];
 
     protected static $defaults = null;

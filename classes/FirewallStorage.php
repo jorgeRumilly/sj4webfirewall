@@ -48,8 +48,11 @@ class FirewallStorage
         }
 
         if ($entry['score'] <= $this->scoreLimitBlock) {
-            $this->data[$ip]['blocked_until'] = $now + $this->blockDuration;
-            $this->save();
+            // ✅ Ne poser le blocage que si ce n’est pas déjà fait
+            if (!isset($entry['blocked_until']) || $entry['blocked_until'] < $now) {
+                $this->data[$ip]['blocked_until'] = $now + $this->blockDuration;
+                $this->save();
+            }
             return 'blocked';
         }
 
@@ -75,12 +78,31 @@ class FirewallStorage
 
         $this->data[$ip]['score'] += $variation;
         $this->data[$ip]['updated_at'] = time();
+
+        // ✅ Si le score est redevenu acceptable, on enlève le blocage
+        if ($this->data[$ip]['score'] > $this->scoreLimitBlock) {
+            unset($this->data[$ip]['blocked_until']);
+        }
+
         $this->save();
     }
 
+    /**
+     * Vérifie si une IP est déjà enregistrée.
+     */
     public function has($ip)
     {
         return isset($this->data[$ip]);
+    }
+
+    /**
+     * Récupère le score d'une IP.
+     * @param $ip
+     * @return int|mixed
+     */
+    public function getScore($ip)
+    {
+        return isset($this->data[$ip]['score']) ? $this->data[$ip]['score'] : 0;
     }
 
     /**

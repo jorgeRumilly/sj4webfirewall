@@ -149,15 +149,19 @@ class Sj4webFirewall extends Module
              }
 
              // 6. Optionnel : ralentissement doux pour visiteurs suspects
-             if ($config['SJ4WEB_FW_ENABLE_SLEEP']) {
+             $score = $storage->getScore($ip); // à créer dans FirewallStorage si non existant
+
+             if ($config['SJ4WEB_FW_ENABLE_SLEEP'] && $score <= $config['SJ4WEB_FW_SCORE_LIMIT_SLOW']) {
                  $storage->logEvent($ip, 'ralenti: score faible');
                  FirewallStatsLogger::logVisit($userAgent, 'human');
+
                  if ($is_active_firewall) {
                      usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
-                 } else {
-                     return '';
                  }
+
+                 return '';
              }
+
 
              FirewallStatsLogger::logVisit($userAgent, 'human');
          } catch (Exception $e) {
