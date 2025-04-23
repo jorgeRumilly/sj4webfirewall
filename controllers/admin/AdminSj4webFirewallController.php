@@ -36,6 +36,17 @@ class AdminSj4webFirewallController extends ModuleAdminController
                 ],
                 'input' => [
                     [
+                        'type' => 'switch',
+                        'label' => $this->trans('Activer le firewall', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_ACTIVATE_FIREWALL',
+                        'is_bool' => true,
+                        'values' => [
+                            ['id' => 'active_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'active_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                        'desc' => $this->trans('Si non actif seule la partie log est en fonction. Si actif, alors les actions repoussoires sont appliquées', [], 'Modules.Sj4webfirewall.Admin')
+                    ],
+                    [
                         'type' => 'textarea',
                         'label' => $this->trans('IP autorisées (whitelist)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_WHITELIST_IPS',

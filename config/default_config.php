@@ -9,11 +9,12 @@ return [
         '91.172.92.135'
     ],
     'SJ4WEB_FW_SAFEBOTS' => [
-        'googlebot', 'bingbot', 'duckduckbot', 'yandexbot',
-        'baiduspider', 'msnbot', 'slurp', 'facebot', 'ia_archiver'
+        'googlebot', 'bingbot', 'duckduckbot', 'msnbot',
+        'slurp', 'facebot', 'ia_archiver', 'applebot', 'gptbot',
+        'oai-searchbot', 'chatgpt-user', 'perplexitybot', 'ccbot'
     ],
     'SJ4WEB_FW_MALICIOUSBOTS' => ['ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'rogerbot', 'linkpadbot',
-        'screaming frog seo spider', 'sitebulb', 'seokicks-robot', 'linkchecker',
+        'screaming frog seo spider', 'sitebulb', 'seokicks-robot', 'linkchecker','baiduspider',
         'netpeak spider', 'buzzbot', 'spbot', 'curl', 'python-requests', 'wget',
         'oppo\\sa33', '(?:c99|php|web)shell', 'site.{0,2}copier', 'base64_decode',
         'bin/bash', 'disconnect', 'eval', 'unserializ', 'libwww-perl', 'pycurl',
@@ -56,5 +57,7 @@ return [
     'SJ4WEB_FW_BLOCK_DURATION' => 3600, // en secondes
     'SJ4WEB_FW_ENABLE_SLEEP' => true,
     'SJ4WEB_FW_SLEEP_DELAY_MS' => 1500,
-    'SJ4WEB_FW_LOG_ENABLED' => true
+    'SJ4WEB_FW_LOG_ENABLED' => true,
+    'SJ4WEB_FW_ACTIVATE_FIREWALL' => false,
+
 ];

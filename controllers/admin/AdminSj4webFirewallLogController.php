@@ -48,7 +48,11 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
             'token' => Tools::getAdminTokenLite('AdminSj4webFirewallLog'),
         ]);
 
-        $this->setTemplate('module:sj4webfirewall/views/templates/admin/firewall_logs.tpl');
+//        $this->setTemplate('module:sj4webfirewall/views/templates/admin/firewall_logs.tpl');
+//        $template_path = '../../../../modules/preparationcommande/views/templates/admin/sj4webvalidateorder/';
+//        $this->setTemplate(_PS_MODULE_DIR_ . 'sj4webfirewall/views/templates/admin/firewall_logs.tpl');
+        $this->setTemplate('firewall_logs.tpl');
+
     }
 
     protected function getStatusFromScore($score)

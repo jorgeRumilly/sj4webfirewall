@@ -1,11 +1,9 @@
-{extends file='layouts/layout.tpl'}
-
 {block name="content"}
     <div class="card">
         <div class="card-header">
-            <h3 class="card-header-title">
+            <p class="h3 card-header-title">
                 {l s='Historique des IPs détectées' d='Modules.Sj4webfirewall.Admin'}
-            </h3>
+            </p>
         </div>
         <div class="card-body">
             {if $firewall_logs|count > 0}
@@ -36,11 +34,13 @@
                             </td>
                             <td>{$entry.updated_at}</td>
                             <td>
-                                <ul style="margin:0; padding-left:16px;">
-                                    {foreach from=$entry.log item=log}
-                                        <li><small>{$log.time} - {$log.reason}</small></li>
-                                    {/foreach}
-                                </ul>
+                                <div class="sjlog_content">
+                                    <ul style="margin:0; padding-left:16px;">
+                                        {foreach from=$entry.log item=log}
+                                            <li><small>{$log.time} - {$log.reason}</small></li>
+                                        {/foreach}
+                                    </ul>
+                                </div>
                             </td>
                             <td>
                                 <div class="btn-group">

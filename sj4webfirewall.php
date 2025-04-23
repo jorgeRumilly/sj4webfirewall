@@ -6,6 +6,7 @@ if (!defined('_PS_VERSION_')) {
 require_once __DIR__.'/classes/FirewallGeo.php';
 require_once __DIR__.'/classes/FirewallStorage.php';
 require_once __DIR__.'/classes/Sj4webFirewallConfigHelper.php';
+require_once __DIR__.'/classes/FirewallStatsLogger.php';
 
 class Sj4webFirewall extends Module
 {
@@ -53,7 +54,7 @@ class Sj4webFirewall extends Module
 
     public function hookDisplayBackOfficeHeader()
     {
-        if (Tools::getValue('controller') === 'AdminSj4webFirewall') {
+        if (Tools::getValue('controller') === 'AdminSj4webFirewall' || Tools::getValue('controller') === 'AdminSj4webFirewallLog') {
             $this->context->controller->addCss($this->_path . 'views/css/sjfirewall_admin.css');
         }
     }
@@ -82,8 +83,11 @@ class Sj4webFirewall extends Module
                  (int)$config['SJ4WEB_FW_BLOCK_DURATION']
              );
 
+             $is_active_firewall = $config['SJ4WEB_FW_ACTIVATE_FIREWALL'] ?? false;
+
              // 1. Vérification des IPs autorisées (whitelist)
              if ($this->isIpWhitelisted($ip, $config['SJ4WEB_FW_WHITELIST_IPS'])) {
+                 FirewallStatsLogger::logVisit($userAgent, 'human');
                  return '';
              }
 
@@ -91,41 +95,71 @@ class Sj4webFirewall extends Module
              $status = $storage->getStatusForIp($ip);
              if ($status === 'blocked') {
                  $storage->logEvent($ip, 'IP bloquée par score');
-                 header('HTTP/1.1 403 Forbidden');
-                 exit('Access denied.');
+                 FirewallStatsLogger::logVisit($userAgent, 'blocked'); // ou 'blocked' si tu veux un type dédié
+                if ($is_active_firewall) {
+                    header('HTTP/1.1 403 Forbidden');
+                    exit('Access denied.');
+                } else {
+                    return '';
+                }
              }
 
              // 3. Laisser passer les bots SEO connus
              if ($this->isKnownSafeBot($userAgent, $config['SJ4WEB_FW_SAFEBOTS'])) {
+                 if (!$storage->has($ip)) {
+                     $storage->updateScore($ip, 0);
+                 }
+
+                 $botName = FirewallStatsLogger::detectBotName($userAgent, $config['SJ4WEB_FW_SAFEBOTS']);
+                 $storage->logEvent($ip, 'IP OK - Bot SEO reconnu');
+                 $this->logAction($ip, $userAgent, 'safe_bot');
+                 FirewallStatsLogger::logVisit($userAgent, 'safe', $botName);
                  return '';
              }
 
              // 4. Blocage immédiat des bots malveillants connus
              if ($this->isMaliciousBot($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS'])) {
+                 $botName = FirewallStatsLogger::detectBotName($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS']);
                  $storage->updateScore($ip, -20);
                  $storage->logEvent($ip, 'bot_suspect');
                  $this->logAction($ip, $userAgent, 'bot_suspect');
-                 header('HTTP/1.1 403 Forbidden');
-                 exit('Access denied.');
+                 FirewallStatsLogger::logVisit($userAgent, 'bad', $botName);
+
+                 if ($is_active_firewall) {
+                     header('HTTP/1.1 403 Forbidden');
+                     exit('Access denied.');
+                 } else {
+                     return '';
+                 }
              }
 
-             // 5. Blocage par pays si activé
+             // 5. Pays bloqué
              $geo = new FirewallGeo();
              $country = $geo->getCountryCode($ip);
              if ($country && in_array($country, $config['SJ4WEB_FW_COUNTRIES_BLOCKED'])) {
                  $storage->updateScore($ip, -10);
                  $storage->logEvent($ip, 'pays_bloque: ' . $country);
                  $this->logAction($ip, $userAgent, 'pays_bloque: ' . $country);
-                 header('HTTP/1.1 403 Forbidden');
-                 exit('Access denied by country restriction.');
+                 FirewallStatsLogger::logVisit($userAgent, 'bad', 'pays:' . $country);
+                 if ($is_active_firewall) {
+                     header('HTTP/1.1 403 Forbidden');
+                     exit('Access denied by country restriction.');
+                 }
+                 return '';
              }
 
              // 6. Optionnel : ralentissement doux pour visiteurs suspects
              if ($config['SJ4WEB_FW_ENABLE_SLEEP']) {
                  $storage->logEvent($ip, 'ralenti: score faible');
-                 usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
+                 FirewallStatsLogger::logVisit($userAgent, 'human');
+                 if ($is_active_firewall) {
+                     usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
+                 } else {
+                     return '';
+                 }
              }
 
+             FirewallStatsLogger::logVisit($userAgent, 'human');
          } catch (Exception $e) {
              $this->logAction($ip, $userAgent, 'Erreur execution : ' . $e->getMessage());
          }

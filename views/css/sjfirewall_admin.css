@@ -2,3 +2,11 @@ textarea[name^="SJ4WEB_"] {
     max-height: 200px !important;
     overflow: auto;
 }
+
+.sjlog_content {
+    padding: 10px;
+    max-height: 120px !important;
+    overflow: hidden;
+    overflow-y: auto;
+    background-color: #fff;
+}

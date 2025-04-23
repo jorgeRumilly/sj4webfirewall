@@ -78,6 +78,11 @@ class FirewallStorage
         $this->save();
     }
 
+    public function has($ip)
+    {
+        return isset($this->data[$ip]);
+    }
+
     /**
      * Ajoute un évènement au journal d'une IP.
      */

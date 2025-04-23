@@ -6,6 +6,7 @@ class Sj4webFirewallConfigHelper
         'SJ4WEB_FW_SAFEBOTS',
         'SJ4WEB_FW_MALICIOUSBOTS',
         'SJ4WEB_FW_ENABLE_SLEEP',
+        'SJ4WEB_FW_ACTIVATE_FIREWALL',
         'SJ4WEB_FW_SLEEP_DELAY_MS',
         'SJ4WEB_FW_COUNTRIES_BLOCKED',
     ];
