@@ -34,6 +34,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
                     $entries[] = [
                         'ip' => $ip,
                         'score' => (int) $info['score'],
+                        'count' => $info['count'] ?? 0,
                         'updated_at' => isset($info['updated_at']) ? date('Y-m-d H:i:s', $info['updated_at']) : '',
                         'status' => $this->getStatusFromScore((int) $info['score']),
                         'log' => isset($info['log']) ? (array) $info['log'] : [],
@@ -48,9 +49,6 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
             'token' => Tools::getAdminTokenLite('AdminSj4webFirewallLog'),
         ]);
 
-//        $this->setTemplate('module:sj4webfirewall/views/templates/admin/firewall_logs.tpl');
-//        $template_path = '../../../../modules/preparationcommande/views/templates/admin/sj4webvalidateorder/';
-//        $this->setTemplate(_PS_MODULE_DIR_ . 'sj4webfirewall/views/templates/admin/firewall_logs.tpl');
         $this->setTemplate('firewall_logs.tpl');
 
     }

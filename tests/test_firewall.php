@@ -1,3 +1,8 @@
+<html>
+<head>
+    <title>Firewall Test</title>
+</head>
+<body>
 <?php
 
 require_once dirname(__DIR__, 3) . '/config/config.inc.php';
@@ -7,7 +12,7 @@ require_once dirname(__DIR__, 3) . '/init.php';
 require_once _PS_MODULE_DIR_ . 'sj4webfirewall/classes/FirewallStorage.php';
 require_once _PS_MODULE_DIR_ . 'sj4webfirewall/classes/FirewallStatsLogger.php';
 require_once _PS_MODULE_DIR_ . 'sj4webfirewall/classes/FirewallGeo.php';
-require_once _PS_MODULE_DIR_ . 'sj4webfirewall/helpers/Sj4webFirewallConfigHelper.php';
+require_once _PS_MODULE_DIR_ . 'sj4webfirewall/classes/Sj4webFirewallConfigHelper.php';
 
 $ip = $_GET['ip'] ?? '8.8.8.8';
 $userAgent = $_GET['ua'] ?? 'Mozilla/5.0';
@@ -37,7 +42,7 @@ echo '<p><strong>User-Agent :</strong> ' . $userAgent . '</p>';
 
 function out($label) {
     echo '<p>🧪 <strong>' . $label . '</strong></p>';
-    exit;
+//    exit;
 }
 
 // 1. IP whitelistée
@@ -115,3 +120,5 @@ out('HUMAN NORMAL');
     <label>User-Agent : <input type="text" name="ua" value="<?= htmlspecialchars($userAgent) ?>" size="80" /></label><br>
     <button type="submit">Tester</button>
 </form>
+</body>
+</html>

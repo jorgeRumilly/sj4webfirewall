@@ -95,6 +95,7 @@ class Sj4webFirewall extends Module
              $status = $storage->getStatusForIp($ip);
              if ($status === 'blocked') {
                  $storage->logEvent($ip, 'IP bloquée par score');
+                 $storage->incrementVisit($ip);
                  FirewallStatsLogger::logVisit($userAgent, 'blocked'); // ou 'blocked' si tu veux un type dédié
                 if ($is_active_firewall) {
                     header('HTTP/1.1 403 Forbidden');
@@ -110,8 +111,9 @@ class Sj4webFirewall extends Module
                      $storage->updateScore($ip, 0);
                  }
 
+                 $storage->incrementVisit($ip);
                  $botName = FirewallStatsLogger::detectBotName($userAgent, $config['SJ4WEB_FW_SAFEBOTS']);
-                 $storage->logEvent($ip, 'IP OK - Bot SEO reconnu');
+                 $storage->logEvent($ip, 'IP OK - Bot SEO reconnu - ' . $botName);
                  $this->logAction($ip, $userAgent, 'safe_bot');
                  FirewallStatsLogger::logVisit($userAgent, 'safe', $botName);
                  return '';
@@ -121,7 +123,8 @@ class Sj4webFirewall extends Module
              if ($this->isMaliciousBot($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS'])) {
                  $botName = FirewallStatsLogger::detectBotName($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS']);
                  $storage->updateScore($ip, -20);
-                 $storage->logEvent($ip, 'bot_suspect');
+                 $storage->incrementVisit($ip);
+                 $storage->logEvent($ip, 'bot_suspect - ' . $botName);
                  $this->logAction($ip, $userAgent, 'bot_suspect');
                  FirewallStatsLogger::logVisit($userAgent, 'bad', $botName);
 
@@ -138,6 +141,7 @@ class Sj4webFirewall extends Module
              $country = $geo->getCountryCode($ip);
              if ($country && in_array($country, $config['SJ4WEB_FW_COUNTRIES_BLOCKED'])) {
                  $storage->updateScore($ip, -10);
+                 $storage->incrementVisit($ip);
                  $storage->logEvent($ip, 'pays_bloque: ' . $country);
                  $this->logAction($ip, $userAgent, 'pays_bloque: ' . $country);
                  FirewallStatsLogger::logVisit($userAgent, 'bad', 'pays:' . $country);
@@ -153,6 +157,7 @@ class Sj4webFirewall extends Module
 
              if ($config['SJ4WEB_FW_ENABLE_SLEEP'] && $score <= $config['SJ4WEB_FW_SCORE_LIMIT_SLOW']) {
                  $storage->logEvent($ip, 'ralenti: score faible');
+                 $storage->incrementVisit($ip);
                  FirewallStatsLogger::logVisit($userAgent, 'human');
 
                  if ($is_active_firewall) {

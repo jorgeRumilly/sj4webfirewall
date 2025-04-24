@@ -13,6 +13,7 @@
                         <th>{l s='Adresse IP' d='Modules.Sj4webfirewall.Admin'}</th>
                         <th>{l s='Score' d='Modules.Sj4webfirewall.Admin'}</th>
                         <th>{l s='Statut' d='Modules.Sj4webfirewall.Admin'}</th>
+                        <th>{l s='Visites' d='Modules.Sj4webfirewall.Admin'}</th>
                         <th>{l s='Dernière activité' d='Modules.Sj4webfirewall.Admin'}</th>
                         <th>{l s='Logs' d='Modules.Sj4webfirewall.Admin'}</th>
                         <th>{l s='Actions' d='Modules.Sj4webfirewall.Admin'}</th>
@@ -32,6 +33,7 @@
                                     <span class="badge badge-success">{l s='Normal' d='Modules.Sj4webfirewall.Admin'}</span>
                                 {/if}
                             </td>
+                            <td>{$entry.count}</td>
                             <td>{$entry.updated_at}</td>
                             <td>
                                 <div class="sjlog_content">

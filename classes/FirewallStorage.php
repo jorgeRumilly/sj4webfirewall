@@ -71,17 +71,41 @@ class FirewallStorage
         if (!isset($this->data[$ip])) {
             $this->data[$ip] = [
                 'score' => 0,
+                'count' => 0,
                 'log' => [],
                 'updated_at' => time(),
             ];
         }
-
         $this->data[$ip]['score'] += $variation;
         $this->data[$ip]['updated_at'] = time();
-
         // ✅ Si le score est redevenu acceptable, on enlève le blocage
         if ($this->data[$ip]['score'] > $this->scoreLimitBlock) {
             unset($this->data[$ip]['blocked_until']);
+        }
+        $this->save();
+    }
+
+    /**
+     * Incrémente le compteur de visites pour une IP spécifique,
+     * sans toucher au score. Utile pour suivre les IPs connues (bots, suspects…).
+     *
+     * @param string $ip
+     */
+    public function incrementVisit($ip)
+    {
+        if (!isset($this->data[$ip])) {
+            $this->data[$ip] = [
+                'score' => 0,
+                'count' => 1,
+                'log' => [],
+                'updated_at' => time(),
+            ];
+        } else {
+            if (!isset($this->data[$ip]['count'])) {
+                $this->data[$ip]['count'] = 0;
+            }
+            $this->data[$ip]['count'] += 1;
+            $this->data[$ip]['updated_at'] = time();
         }
 
         $this->save();
@@ -105,6 +129,11 @@ class FirewallStorage
         return isset($this->data[$ip]['score']) ? $this->data[$ip]['score'] : 0;
     }
 
+    public function getCount($ip)
+    {
+        return isset($this->data[$ip]['count']) ? $this->data[$ip]['count'] : 0;
+    }
+
     /**
      * Ajoute un évènement au journal d'une IP.
      */
@@ -119,8 +148,8 @@ class FirewallStorage
             'reason' => $reason
         ];
 
-        if (count($this->data[$ip]['log']) > 20) {
-            $this->data[$ip]['log'] = array_slice($this->data[$ip]['log'], -20);
+        if (count($this->data[$ip]['log']) > 200) {
+            $this->data[$ip]['log'] = array_slice($this->data[$ip]['log'], -200);
         }
 
         $this->save();
