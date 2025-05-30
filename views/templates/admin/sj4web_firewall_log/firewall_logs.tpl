@@ -46,18 +46,18 @@
                             </td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="{$link->getAdminLink('AdminSj4webFirewallLog')|escape:'html'}&action=resetScore&ip={$entry.ip|urlencode}&token={$token}" class="btn btn-sm btn-outline-primary" title="{l s='Réinitialiser le score' d='Modules.Sj4webfirewall.Admin'}">
+                                    <a href="{$link->getAdminLink('AdminSj4webFirewallLog')|escape:'html'}&action=resetScore&ip={$entry.ip|urlencode}" class="btn btn-sm btn-outline-primary" title="{l s='Réinitialiser le score' d='Modules.Sj4webfirewall.Admin'}">
                                         <i class="material-icons">restart_alt</i>
                                     </a>
-                                    <a href="{$link->getAdminLink('AdminSj4webFirewallLog')|escape:'html'}&action=deleteIp&ip={$entry.ip|urlencode}&token={$token}" class="btn btn-sm btn-outline-danger" title="{l s='Supprimer cette IP' d='Modules.Sj4webfirewall.Admin'}" onclick="return confirm('{l s='Supprimer cette IP ?' d='Modules.Sj4webfirewall.Admin'}');">
+                                    <a href="{$link->getAdminLink('AdminSj4webFirewallLog')|escape:'html'}&action=deleteIp&ip={$entry.ip|urlencode}" class="btn btn-sm btn-outline-danger" title="{l s='Supprimer cette IP' d='Modules.Sj4webfirewall.Admin'}" onclick="return confirm('{l s='Supprimer cette IP ?' d='Modules.Sj4webfirewall.Admin'}');">
                                         <i class="material-icons">delete</i>
                                     </a>
                                     {if $entry.whitelisted}
-                                        <a href="{$link->getAdminLink('AdminSj4webFirewallLog')|escape:'html'}&action=unwhitelist&ip={$entry.ip|urlencode}&token={$token}" class="btn btn-sm btn-outline-warning" title="{l s='Retirer de la whitelist' d='Modules.Sj4webfirewall.Admin'}">
+                                        <a href="{$link->getAdminLink('AdminSj4webFirewallLog')|escape:'html'}&action=unwhitelist&ip={$entry.ip|urlencode}" class="btn btn-sm btn-outline-warning" title="{l s='Retirer de la whitelist' d='Modules.Sj4webfirewall.Admin'}">
                                             <i class="material-icons">block</i>
                                         </a>
                                     {else}
-                                        <a href="{$link->getAdminLink('AdminSj4webFirewallLog')|escape:'html'}&action=whitelist&ip={$entry.ip|urlencode}&token={$token}" class="btn btn-sm btn-outline-success" title="{l s='Ajouter à la whitelist' d='Modules.Sj4webfirewall.Admin'}">
+                                        <a href="{$link->getAdminLink('AdminSj4webFirewallLog')|escape:'html'}&action=whitelist&ip={$entry.ip|urlencode}" class="btn btn-sm btn-outline-success" title="{l s='Ajouter à la whitelist' d='Modules.Sj4webfirewall.Admin'}">
                                             <i class="material-icons">check_circle</i>
                                         </a>
                                     {/if}

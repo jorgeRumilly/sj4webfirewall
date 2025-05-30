@@ -92,7 +92,6 @@ class Sj4webFirewall extends Module
 
              // 1. Vérification des IPs autorisées (whitelist)
              if ($this->isIpWhitelisted($ip, $config['SJ4WEB_FW_WHITELIST_IPS'])) {
-                 FirewallStatsLogger::logVisit($userAgent, 'human');
                  FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'human', null, $country, 200, $score);
                  return '';
              }
@@ -102,7 +101,6 @@ class Sj4webFirewall extends Module
              if ($status === 'blocked') {
                  $storage->logEvent($ip, 'IP bloquée par score');
                  $storage->incrementVisit($ip);
-                 FirewallStatsLogger::logVisit($userAgent, 'blocked'); // ou 'blocked' si tu veux un type dédié
                  FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'blocked', null, $country, 403, $score);
                 if ($is_active_firewall) {
                     header('HTTP/1.1 403 Forbidden');

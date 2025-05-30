@@ -69,4 +69,60 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         }
         return 'normal';
     }
+
+    public function postProcess()
+    {
+        parent::postProcess();
+
+        $action = Tools::getValue('action');
+        $ip = Tools::getValue('ip');
+
+        if ($action && $ip) {
+            $filepath = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/ip_scores.json';
+            $data = [];
+
+            if (file_exists($filepath)) {
+                $data = json_decode(file_get_contents($filepath), true);
+            }
+
+            $whitelist = json_decode(Configuration::get('SJ4WEB_FW_WHITELIST_IPS'), true) ?: [];
+
+            switch ($action) {
+                case 'resetScore':
+                    if (isset($data[$ip])) {
+                        $data[$ip]['score'] = 0;
+                    }
+                    break;
+
+                case 'deleteIp':
+                    if (isset($data[$ip])) {
+                        unset($data[$ip]);
+                    }
+                    break;
+
+                case 'whitelist':
+                    if (isset($data[$ip])) {
+                        $data[$ip]['whitelisted'] = true;
+                        if (!in_array($ip, $whitelist)) {
+                            $whitelist[] = $ip;
+                            Configuration::updateValue('SJ4WEB_FW_WHITELIST_IPS', json_encode(array_values($whitelist)));
+                        }
+                    }
+                    break;
+
+                case 'unwhitelist':
+                    if (isset($data[$ip])) {
+                        unset($data[$ip]['whitelisted']);
+                        $whitelist = array_filter($whitelist, fn($item) => trim($item) !== $ip);
+                        Configuration::updateValue('SJ4WEB_FW_WHITELIST_IPS', json_encode(array_values($whitelist)));
+                    }
+                    break;
+            }
+
+            file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT));
+
+            Tools::redirectAdmin(self::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminSj4webFirewallLog'));
+        }
+    }
+
 }
