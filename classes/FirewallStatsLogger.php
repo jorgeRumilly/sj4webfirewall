@@ -66,6 +66,64 @@ class FirewallStatsLogger
     }
 
     /**
+     * Enregistre une visite par IP.
+     * @param $ip
+     * @param $userAgent
+     * @param $type
+     * @param $botName
+     * @param $country
+     * @param $statusCode
+     * @param $score
+     * @return void
+     */
+    public static function logVisitPerIp($ip, $userAgent, $type, $botName = null, $country = null, $statusCode = 200, $score = 0)
+    {
+        $date = date('Y-m-d');
+        $logPath = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/stats/' . $date . '.json';
+
+        // Lecture existante
+        if (file_exists($logPath)) {
+            $content = json_decode(file_get_contents($logPath), true);
+        } else {
+            $content = [
+                'date' => $date,
+                'ips' => []
+            ];
+        }
+
+        // Initialiser l'IP si inconnue
+        if (!isset($content['ips'][$ip])) {
+            $content['ips'][$ip] = [
+                'type' => $type,
+                'bot_name' => $botName,
+                'user_agent' => $userAgent,
+                'country' => $country,
+                'access_count' => 0,
+                'error_404_count' => 0,
+                'error_403_count' => 0,
+                'first_seen' => date('c'),
+                'last_seen' => date('c'),
+                'score' => $score
+            ];
+        }
+
+        // Mise à jour
+        $content['ips'][$ip]['access_count'] += 1;
+        $content['ips'][$ip]['last_seen'] = date('c');
+
+        // Incrémentation des erreurs HTTP
+        if ($statusCode === 404) {
+            $content['ips'][$ip]['error_404_count'] += 1;
+        } elseif ($statusCode === 403) {
+            $content['ips'][$ip]['error_403_count'] += 1;
+        }
+
+        // Écriture
+        file_put_contents($logPath, json_encode($content, JSON_PRETTY_PRINT));
+    }
+
+
+    /**
      * Détecte le nom du bot dans un user-agent donné à partir d’une liste.
      * @param string $userAgent
      * @param array $botList

@@ -14,7 +14,7 @@ class Sj4webFirewall extends Module
     {
         $this->name = 'sj4webfirewall';
         $this->tab = 'administration';
-        $this->version = '1.0.0';
+        $this->version = '1.1.0';
         $this->author = 'SJ4WEB.FR';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -85,9 +85,15 @@ class Sj4webFirewall extends Module
 
              $is_active_firewall = $config['SJ4WEB_FW_ACTIVATE_FIREWALL'] ?? false;
 
+             $geo = new FirewallGeo();
+             $country = $geo->getCountryCode($ip);
+             $score = $storage->getScore($ip);
+
+
              // 1. Vérification des IPs autorisées (whitelist)
              if ($this->isIpWhitelisted($ip, $config['SJ4WEB_FW_WHITELIST_IPS'])) {
                  FirewallStatsLogger::logVisit($userAgent, 'human');
+                 FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'human', null, $country, 200, $score);
                  return '';
              }
 
@@ -97,6 +103,7 @@ class Sj4webFirewall extends Module
                  $storage->logEvent($ip, 'IP bloquée par score');
                  $storage->incrementVisit($ip);
                  FirewallStatsLogger::logVisit($userAgent, 'blocked'); // ou 'blocked' si tu veux un type dédié
+                 FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'blocked', null, $country, 403, $score);
                 if ($is_active_firewall) {
                     header('HTTP/1.1 403 Forbidden');
                     exit('Access denied.');
@@ -115,7 +122,7 @@ class Sj4webFirewall extends Module
                  $botName = FirewallStatsLogger::detectBotName($userAgent, $config['SJ4WEB_FW_SAFEBOTS']);
                  $storage->logEvent($ip, 'IP OK - Bot SEO reconnu - ' . $botName);
                  $this->logAction($ip, $userAgent, 'safe_bot');
-                 FirewallStatsLogger::logVisit($userAgent, 'safe', $botName);
+                 FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'bot_safe', $botName, $country, 200, $score);
                  return '';
              }
 
@@ -126,8 +133,7 @@ class Sj4webFirewall extends Module
                  $storage->incrementVisit($ip);
                  $storage->logEvent($ip, 'bot_suspect - ' . $botName);
                  $this->logAction($ip, $userAgent, 'bot_suspect');
-                 FirewallStatsLogger::logVisit($userAgent, 'bad', $botName);
-
+                 FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'bot_malicious', $botName, $country, 403, $score);
                  if ($is_active_firewall) {
                      header('HTTP/1.1 403 Forbidden');
                      exit('Access denied.');
@@ -137,14 +143,12 @@ class Sj4webFirewall extends Module
              }
 
              // 5. Pays bloqué
-             $geo = new FirewallGeo();
-             $country = $geo->getCountryCode($ip);
              if ($country && in_array($country, $config['SJ4WEB_FW_COUNTRIES_BLOCKED'])) {
                  $storage->updateScore($ip, -10);
                  $storage->incrementVisit($ip);
                  $storage->logEvent($ip, 'pays_bloque: ' . $country);
                  $this->logAction($ip, $userAgent, 'pays_bloque: ' . $country);
-                 FirewallStatsLogger::logVisit($userAgent, 'bad', 'pays:' . $country);
+                 FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'bot_malicious', 'pays:' . $country, $country, 403, $score);
                  if ($is_active_firewall) {
                      header('HTTP/1.1 403 Forbidden');
                      exit('Access denied by country restriction.');
@@ -153,22 +157,16 @@ class Sj4webFirewall extends Module
              }
 
              // 6. Optionnel : ralentissement doux pour visiteurs suspects
-             $score = $storage->getScore($ip); // à créer dans FirewallStorage si non existant
-
              if ($config['SJ4WEB_FW_ENABLE_SLEEP'] && $score <= $config['SJ4WEB_FW_SCORE_LIMIT_SLOW']) {
                  $storage->logEvent($ip, 'ralenti: score faible');
                  $storage->incrementVisit($ip);
-                 FirewallStatsLogger::logVisit($userAgent, 'human');
-
+                 FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'human', null, $country, 200, $score);
                  if ($is_active_firewall) {
                      usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
                  }
-
                  return '';
              }
-
-
-             FirewallStatsLogger::logVisit($userAgent, 'human');
+             FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'human', null, $country, 200, $score);
          } catch (Exception $e) {
              $this->logAction($ip, $userAgent, 'Erreur execution : ' . $e->getMessage());
          }
@@ -231,16 +229,6 @@ class Sj4webFirewall extends Module
     /**
      * Vérifie si une IP appartient à une plage CIDR.
      */
-//    protected function ipInRange($ip, $range)
-//    {
-//        if (!strpos($range, '/')) return false;
-//        list($subnet, $bits) = explode('/', $range);
-//        $ip = ip2long($ip);
-//        $subnet = ip2long($subnet);
-//        $mask = -1 << (32 - $bits);
-//        $subnet &= $mask;
-//        return ($ip & $mask) === $subnet;
-//    }
     protected function ipInRange($ip, $range)
     {
         if (!strpos($range, '/')) {
