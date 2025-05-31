@@ -81,6 +81,11 @@ class FirewallStatsLogger
         $date = date('Y-m-d');
         $logPath = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/stats/' . $date . '.json';
 
+
+        if (!is_dir(self::$logDir)) {
+            mkdir(self::$logDir, 0755, true);
+        }
+
         // Lecture existante
         if (file_exists($logPath)) {
             $content = json_decode(file_get_contents($logPath), true);
@@ -108,8 +113,10 @@ class FirewallStatsLogger
         }
 
         // Mise à jour
+        $content['ips'][$ip]['country'] = ($content['ips'][$ip]['country'] !== $country) ? $country : $content['ips'][$ip]['country'];
         $content['ips'][$ip]['access_count'] += 1;
         $content['ips'][$ip]['last_seen'] = date('c');
+        $content['ips'][$ip]['score'] = $score;
 
         // Incrémentation des erreurs HTTP
         if ($statusCode === 404) {

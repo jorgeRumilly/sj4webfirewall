@@ -14,7 +14,7 @@ return [
         'oai-searchbot', 'chatgpt-user', 'perplexitybot', 'ccbot'
     ],
     'SJ4WEB_FW_MALICIOUSBOTS' => ['ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'rogerbot', 'linkpadbot',
-        'screaming frog seo spider', 'sitebulb', 'seokicks-robot', 'linkchecker','baiduspider',
+        'screaming frog seo spider', 'sitebulb', 'seokicks-robot', 'linkchecker', 'baiduspider',
         'netpeak spider', 'buzzbot', 'spbot', 'curl', 'python-requests', 'wget',
         'oppo\\sa33', '(?:c99|php|web)shell', 'site.{0,2}copier', 'base64_decode',
         'bin/bash', 'disconnect', 'eval', 'unserializ', 'libwww-perl', 'pycurl',
@@ -52,12 +52,14 @@ return [
         'sqlmate', 'sqlscan', 'sqlsec', 'sqlsploit', 'sqltool', 'sqlworm', 'sqlx',
         'sqlz'],
     'SJ4WEB_FW_COUNTRIES_BLOCKED' => [],
-    'SJ4WEB_FW_SCORE_LIMIT_BLOCK' => -40,
+    'SJ4WEB_FW_SCORE_LIMIT_BLOCK' => -70,
     'SJ4WEB_FW_SCORE_LIMIT_SLOW' => -10,
     'SJ4WEB_FW_BLOCK_DURATION' => 3600, // en secondes
     'SJ4WEB_FW_ENABLE_SLEEP' => true,
     'SJ4WEB_FW_SLEEP_DELAY_MS' => 1500,
     'SJ4WEB_FW_LOG_ENABLED' => true,
     'SJ4WEB_FW_ACTIVATE_FIREWALL' => false,
-
+    'SJ4WEB_FW_ALERT_EMAIL_ENABLED' => false,
+    'SJ4WEB_FW_ALERT_RECIPIENTS' => '',
+    'SJ4WEB_FW_ALERT_THRESHOLD' => -30
 ];

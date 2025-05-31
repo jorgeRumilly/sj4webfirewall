@@ -77,18 +77,20 @@ class Sj4webFirewall extends Module
                  }
              }
 
+             $is_active_firewall = (bool)$config['SJ4WEB_FW_ACTIVATE_FIREWALL'] ?? false;
+             $geo = new FirewallGeo();
+             $country = $geo->getCountryCode($ip);
+
              $storage = new FirewallStorage(
                  (int)$config['SJ4WEB_FW_SCORE_LIMIT_BLOCK'],
                  (int)$config['SJ4WEB_FW_SCORE_LIMIT_SLOW'],
-                 (int)$config['SJ4WEB_FW_BLOCK_DURATION']
+                 (int)$config['SJ4WEB_FW_BLOCK_DURATION'],
+                 (int)$config['SJ4WEB_FW_ALERT_THRESHOLD'],
+                $userAgent,
+                 $country,
+                 (bool)$config['SJ4WEB_FW_ALERT_EMAIL_ENABLED']
              );
-
-             $is_active_firewall = $config['SJ4WEB_FW_ACTIVATE_FIREWALL'] ?? false;
-
-             $geo = new FirewallGeo();
-             $country = $geo->getCountryCode($ip);
              $score = $storage->getScore($ip);
-
 
              // 1. Vérification des IPs autorisées (whitelist)
              if ($this->isIpWhitelisted($ip, $config['SJ4WEB_FW_WHITELIST_IPS'])) {
@@ -96,11 +98,20 @@ class Sj4webFirewall extends Module
                  return '';
              }
 
+             $manage_score = [
+                 'ip' => $ip,
+                 'log_event_reason' => '',
+                 'score' => 0,
+                 'update_score' => true];
+
              // 2. Vérification des IPs bloquées (blacklist)
              $status = $storage->getStatusForIp($ip);
              if ($status === 'blocked') {
-                 $storage->logEvent($ip, 'IP bloquée par score');
-                 $storage->incrementVisit($ip);
+                 $manage_score['log_event_reason'] = 'IP bloquée par score';
+                 $manage_score['update_score'] = false;
+                 $storage->manageStorage($manage_score);
+//                 $storage->logEvent($ip, 'IP bloquée par score');
+//                 $storage->incrementVisit($ip);
                  FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'blocked', null, $country, 403, $score);
                 if ($is_active_firewall) {
                     header('HTTP/1.1 403 Forbidden');
@@ -112,13 +123,14 @@ class Sj4webFirewall extends Module
 
              // 3. Laisser passer les bots SEO connus
              if ($this->isKnownSafeBot($userAgent, $config['SJ4WEB_FW_SAFEBOTS'])) {
-                 if (!$storage->has($ip)) {
-                     $storage->updateScore($ip, 0);
-                 }
-
-                 $storage->incrementVisit($ip);
+//                 if (!$storage->has($ip)) {
+//                     $storage->updateScore($ip, 0);
+//                 }
                  $botName = FirewallStatsLogger::detectBotName($userAgent, $config['SJ4WEB_FW_SAFEBOTS']);
-                 $storage->logEvent($ip, 'IP OK - Bot SEO reconnu - ' . $botName);
+                 $manage_score['log_event_reason'] ='IP OK - Bot SEO reconnu - ' . $botName;
+//                 $storage->logEvent($ip, 'IP OK - Bot SEO reconnu - ' . $botName);
+//                 $storage->incrementVisit($ip);
+                 $storage->manageStorage($manage_score);
                  $this->logAction($ip, $userAgent, 'safe_bot');
                  FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'bot_safe', $botName, $country, 200, $score);
                  return '';
@@ -127,9 +139,12 @@ class Sj4webFirewall extends Module
              // 4. Blocage immédiat des bots malveillants connus
              if ($this->isMaliciousBot($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS'])) {
                  $botName = FirewallStatsLogger::detectBotName($userAgent, $config['SJ4WEB_FW_MALICIOUSBOTS']);
-                 $storage->updateScore($ip, -20);
-                 $storage->incrementVisit($ip);
-                 $storage->logEvent($ip, 'bot_suspect - ' . $botName);
+//                 $storage->updateScore($ip, -20);
+//                 $storage->logEvent($ip, 'bot_suspect - ' . $botName);
+//                 $storage->incrementVisit($ip);
+                 $manage_score['log_event_reason'] ='bot_suspect - ' . $botName;
+                 $manage_score['score'] = -20;
+                 $storage->manageStorage($manage_score);
                  $this->logAction($ip, $userAgent, 'bot_suspect');
                  FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'bot_malicious', $botName, $country, 403, $score);
                  if ($is_active_firewall) {
@@ -142,9 +157,13 @@ class Sj4webFirewall extends Module
 
              // 5. Pays bloqué
              if ($country && in_array($country, $config['SJ4WEB_FW_COUNTRIES_BLOCKED'])) {
-                 $storage->updateScore($ip, -10);
-                 $storage->incrementVisit($ip);
-                 $storage->logEvent($ip, 'pays_bloque: ' . $country);
+//                 $storage->updateScore($ip, -10);
+//                 $storage->incrementVisit($ip);
+//                 $storage->logEvent($ip, 'pays_bloque: ' . $country);
+                 $manage_score['log_event_reason'] = 'pays_bloque: ' . $country;
+                 $manage_score['score'] = -10;
+                 $storage->manageStorage($manage_score);
+
                  $this->logAction($ip, $userAgent, 'pays_bloque: ' . $country);
                  FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'bot_malicious', 'pays:' . $country, $country, 403, $score);
                  if ($is_active_firewall) {
@@ -156,15 +175,27 @@ class Sj4webFirewall extends Module
 
              // 6. Optionnel : ralentissement doux pour visiteurs suspects
              if ($config['SJ4WEB_FW_ENABLE_SLEEP'] && $score <= $config['SJ4WEB_FW_SCORE_LIMIT_SLOW']) {
-                 $storage->logEvent($ip, 'ralenti: score faible');
-                 $storage->incrementVisit($ip);
+//                 $storage->logEvent($ip, 'ralenti: score faible');
+//                 $storage->incrementVisit($ip);
+                 $manage_score['log_event_reason'] = 'ralenti: score faible';
+                 $manage_score['updateScore'] = false;
+                 $storage->manageStorage($manage_score);
                  FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'human', null, $country, 200, $score);
                  if ($is_active_firewall) {
                      usleep((int)$config['SJ4WEB_FW_SLEEP_DELAY_MS'] * 1000);
                  }
                  return '';
              }
-             FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'human', null, $country, 200, $score);
+             $httpCode = (int)http_response_code();
+             // Degrade le score si 404 ou 403
+             if ($httpCode === 404) {
+                 $storage->updateScore($ip, -1);
+             }
+             if ($httpCode === 403) {
+                 $storage->updateScore($ip, -5);
+             }
+             FirewallStatsLogger::logVisitPerIp($ip, $userAgent, 'human', null, $country, $httpCode, $score);
+
          } catch (Exception $e) {
              $this->logAction($ip, $userAgent, 'Erreur execution : ' . $e->getMessage());
          }

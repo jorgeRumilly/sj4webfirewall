@@ -12,7 +12,10 @@ class Sj4webFirewallConfigHelper
         'SJ4WEB_FW_SCORE_LIMIT_SLOW',
         'SJ4WEB_FW_BLOCK_DURATION',
         'SJ4WEB_FW_SCORE_LIMIT_BLOCK',
-        'SJ4WEB_FW_LOG_ENABLED'
+        'SJ4WEB_FW_LOG_ENABLED',
+        'SJ4WEB_FW_ALERT_EMAIL_ENABLED',
+        'SJ4WEB_FW_ALERT_RECIPIENTS',
+        'SJ4WEB_FW_ALERT_THRESHOLD'
     ];
 
     protected static $defaults = null;

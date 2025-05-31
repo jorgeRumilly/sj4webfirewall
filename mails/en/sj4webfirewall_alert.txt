@@ -1,0 +1,8 @@
+Suspicious activity detected:
+
+IP: {ip}
+Country: {country}
+User-Agent: {user_agent}
+Current score: {score}
+
+This IP may represent a threat to your website.

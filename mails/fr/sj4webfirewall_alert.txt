@@ -1,0 +1,8 @@
+Une activité suspecte a été détectée :
+
+IP : {ip}
+Pays : {country}
+User-Agent : {user_agent}
+Score actuel : {score}
+
+Cette IP pourrait représenter une menace pour votre site.

@@ -41,8 +41,8 @@ class AdminSj4webFirewallController extends ModuleAdminController
                         'name' => 'SJ4WEB_FW_ACTIVATE_FIREWALL',
                         'is_bool' => true,
                         'values' => [
-                            ['id' => 'active_on', 'value' => 1, 'label' => $this->l('Oui')],
-                            ['id' => 'active_off', 'value' => 0, 'label' => $this->l('Non')],
+                            ['id' => 'active_on', 'value' => 1, 'label' => $this->trans('Yes', [], 'Modules.Sj4webfirewall.Admin')],
+                            ['id' => 'active_off', 'value' => 0, 'label' => $this->trans('No', [], 'Modules.Sj4webfirewall.Admin')],
                         ],
                         'desc' => $this->trans('Si non actif seule la partie log est en fonction. Si actif, alors les actions repoussoires sont appliquées', [], 'Modules.Sj4webfirewall.Admin')
                     ],
@@ -71,19 +71,51 @@ class AdminSj4webFirewallController extends ModuleAdminController
                         'desc' => $this->trans('User-Agent contenant un identifiant à bloquer', [], 'Modules.Sj4webfirewall.Admin'),
                     ],
                     [
+                        'type' => 'html',
+                        'name' => 'html_data',
+                        'html_content' => '<p>&nbsp;</p><hr><h3>'.$this->trans('Trigger thresholds', [], 'Modules.Sj4webfirewall.Admin').'</h3>',
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->trans('Score threshold for blocking', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_SCORE_LIMIT_BLOCK',
+                        'class' => 'fixed-width-sm',
+                        'desc' => $this->trans('Score threshold for blocking', [], 'Modules.Sj4webfirewall.Admin'),
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->trans('Alert threshold', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_ALERT_THRESHOLD',
+                        'class' => 'fixed-width-sm',
+                        'desc' => $this->trans('Trigger an alert when an IP score drops below this value (e.g., -30). Email alerts must be enabled.', [], 'Modules.Sj4webfirewall.Admin'),
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->trans('Blocking duration (s)', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_BLOCK_DURATION',
+                        'class' => 'fixed-width-sm',
+                        'desc' => $this->trans('Duration of the IP block in seconds (e.g., 3600 for 1 hour).', [], 'Modules.Sj4webfirewall.Admin'),
+                    ],
+                    [
                         'type' => 'switch',
                         'label' => $this->trans('Activer le ralentissement (sleep)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_ENABLE_SLEEP',
                         'is_bool' => true,
                         'values' => [
-                            ['id' => 'active_on', 'value' => 1, 'label' => $this->l('Oui')],
-                            ['id' => 'active_off', 'value' => 0, 'label' => $this->l('Non')],
+                            ['id' => 'active_on', 'value' => 1, 'label' => $this->trans('Yes', [], 'Modules.Sj4webfirewall.Admin')],
+                            ['id' => 'active_off', 'value' => 0, 'label' => $this->trans('No', [], 'Modules.Sj4webfirewall.Admin')],
                         ],
                     ],
                     [
                         'type' => 'text',
                         'label' => $this->trans('Durée du sleep (ms)', [], 'Modules.Sj4webfirewall.Admin'),
                         'name' => 'SJ4WEB_FW_SLEEP_DELAY_MS',
+                        'class' => 'fixed-width-sm',
+                    ],
+                    [
+                        'type' => 'html',
+                        'name' => 'html_data',
+                        'html_content' => '<p>&nbsp;</p><hr><h3>'.$this->trans('Block by Countries', [], 'Modules.Sj4webfirewall.Admin').'</h3>',
                     ],
                     [
                         'type' => 'textarea',
@@ -93,6 +125,36 @@ class AdminSj4webFirewallController extends ModuleAdminController
                         'rows' => 3,
                         'desc' => $this->trans('Ex : RU, CN, IR', [], 'Modules.Sj4webfirewall.Admin'),
                     ],
+                    [
+                        'type' => 'html',
+                        'name' => 'html_data',
+                        'html_content' => '<p>&nbsp;</p><hr><h3>'.$this->trans('Email alerts', [], 'Modules.Sj4webfirewall.Admin').'</h3>',
+                    ],
+                    [
+                        'type' => 'switch',
+                        'label' => $this->trans('Enable email alerts', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_ALERT_EMAIL_ENABLED',
+                        'is_bool' => true,
+                        'values' => [
+                            [
+                                'id' => 'active_on',
+                                'value' => 1,
+                                'label' => $this->trans('Yes', [], 'Modules.Sj4webfirewall.Admin')
+                            ],
+                            [
+                                'id' => 'active_off',
+                                'value' => 0,
+                                'label' => $this->trans('No', [], 'Modules.Sj4webfirewall.Admin')
+                            ]
+                        ]
+                    ],
+                    [
+                        'type' => 'textarea',
+                        'label' => $this->trans('Alert recipient emails', [], 'Modules.Sj4webfirewall.Admin'),
+                        'desc' => $this->trans('Separate multiple email addresses with commas.', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_ALERT_RECIPIENTS',
+                        'rows' => 5,
+                    ]
                 ],
                 'submit' => [
                     'title' => $this->trans('Enregistrer', [], 'Modules.Sj4webfirewall.Admin'),
