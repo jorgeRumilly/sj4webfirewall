@@ -2,7 +2,7 @@
 if (!defined('_PS_VERSION_')) {
     exit;
 }
-require_once '../vendor/autoload.php';
+require_once _PS_MODULE_DIR_ . 'sj4webfirewall/vendor/autoload.php';
 use GeoIp2\Database\Reader;
 
 class FirewallGeo
@@ -11,7 +11,7 @@ class FirewallGeo
 
     public function __construct()
     {
-        $mmdbPath = __DIR__ . '/../geo/GeoLite2-Country.mmdb';
+        $mmdbPath = _PS_MODULE_DIR_ . 'sj4webfirewall/geo/GeoLite2-Country.mmdb';
         if (file_exists($mmdbPath)) {
             $this->reader = new Reader($mmdbPath);
         }
