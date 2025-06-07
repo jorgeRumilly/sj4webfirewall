@@ -1,5 +1,7 @@
 <?php
 
+require_once _PS_MODULE_DIR_ . 'sj4webfirewall/classes/FirewallStorage.php';
+
 class AdminSj4webFirewallLogController extends ModuleAdminController
 {
     public function __construct()
@@ -30,14 +32,22 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
             $data = json_decode($json, true);
 
             if (is_array($data)) {
+                // On charge FirewallStorage avec les bons seuils
+                $storage = new FirewallStorage(
+                    (int)Configuration::get('SJ4WEB_FW_SCORE_LIMIT_BLOCK'),
+                    (int)Configuration::get('SJ4WEB_FW_SCORE_LIMIT_SLOW'),
+                    (int)Configuration::get('SJ4WEB_FW_BLOCK_DURATION'),
+                    (int)Configuration::get('SJ4WEB_FW_ALERT_THRESHOLD')
+                );
+
                 foreach ($data as $ip => $info) {
                     $entries[] = [
                         'ip' => $ip,
-                        'score' => (int) $info['score'],
+                        'score' => (int)$info['score'],
                         'count' => $info['count'] ?? 0,
                         'updated_at' => isset($info['updated_at']) ? date('Y-m-d H:i:s', $info['updated_at']) : '',
-                        'status' => $this->getStatusFromScore((int) $info['score']),
-                        'log' => isset($info['log']) ? (array) $info['log'] : [],
+                        'status' => $storage->getStatusForIp($ip), // Ici la vraie méthode
+                        'log' => isset($info['log']) ? (array)$info['log'] : [],
                         'whitelisted' => !empty($info['whitelisted']),
                     ];
                 }
@@ -53,22 +63,22 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
 
     }
 
-    protected function getStatusFromScore($score)
-    {
-        $config = [];
-        foreach (array_keys(require _PS_MODULE_DIR_ . 'sj4webfirewall/config/default_config.php') as $key) {
-            $val = Configuration::get($key);
-            $config[$key] = $val;
-        }
-
-        if ($score <= (int) $config['SJ4WEB_FW_SCORE_LIMIT_BLOCK']) {
-            return 'blocked';
-        }
-        if ($score <= (int) $config['SJ4WEB_FW_SCORE_LIMIT_SLOW']) {
-            return 'slow';
-        }
-        return 'normal';
-    }
+//    protected function getStatusFromScore($score)
+//    {
+//        $config = [];
+//        foreach (array_keys(require _PS_MODULE_DIR_ . 'sj4webfirewall/config/default_config.php') as $key) {
+//            $val = Configuration::get($key);
+//            $config[$key] = $val;
+//        }
+//
+//        if ($score <= (int) $config['SJ4WEB_FW_SCORE_LIMIT_BLOCK']) {
+//            return 'blocked';
+//        }
+//        if ($score <= (int) $config['SJ4WEB_FW_SCORE_LIMIT_SLOW']) {
+//            return 'slow';
+//        }
+//        return 'normal';
+//    }
 
     public function postProcess()
     {
@@ -91,6 +101,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
                 case 'resetScore':
                     if (isset($data[$ip])) {
                         $data[$ip]['score'] = 0;
+                        unset($data[$ip]['blocked_until']);
                     }
                     break;
 
@@ -117,6 +128,20 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
                         Configuration::updateValue('SJ4WEB_FW_WHITELIST_IPS', json_encode(array_values($whitelist)));
                     }
                     break;
+                case 'forceBlock':
+                    if (isset($data[$ip])) {
+                        $now = time();
+                        $blockDuration = (int)Configuration::get('SJ4WEB_FW_BLOCK_DURATION');
+                        $data[$ip]['blocked_until'] = $now + $blockDuration;
+                    }
+                    break;
+
+                case 'unblockIp':
+                    if (isset($data[$ip]) && isset($data[$ip]['blocked_until'])) {
+                        unset($data[$ip]['blocked_until']);
+                    }
+                    break;
+
             }
 
             file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT));

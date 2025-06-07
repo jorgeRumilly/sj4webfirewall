@@ -10,3 +10,84 @@ textarea[name^="SJ4WEB_"] {
     overflow-y: auto;
     background-color: #fff;
 }
+td div.btn-group {
+    display: flex !important;
+    justify-content: space-evenly;
+}
+.btn-outline-sjprimary {
+    color: #007bff!important;
+    background-color: transparent;
+    background-image: none;
+    border-color: #007bff!important;
+}
+.btn-outline-sjprimary i {
+    color: #007bff!important;}
+.btn-outline-sjprimary:hover {
+    color: #fff!important;
+    background-color: #007bff!important;
+    border-color: #007bff!important;
+}
+.btn-outline-sjprimary:hover i {
+    color: #fff!important;}
+.btn-outline-dark {
+    color: #343a40!important;
+    background-color: transparent;
+    background-image: none;
+    border-color: #343a40!important;
+}
+.btn-outline-dark:hover {
+    color: #fff!important;
+    background-color: #343a40!important;
+    border-color: #343a40!important;
+}
+.btn-outline-sjdanger {
+    color: #dc3545!important;
+    background-color: transparent;
+    background-image: none;
+    border-color: #dc3545!important;
+}
+.btn-outline-sjdanger i {
+    color: #dc3545!important;}
+
+.btn-outline-sjdanger:hover {
+    color: #fff!important;
+    background-color: #dc3545!important;
+    border-color: #dc3545!important;
+}
+.btn-outline-sjdanger:hover i {
+    color: #fff!important;
+}
+.btn-outline-sjsuccess {
+    color: #28a745!important;
+    background-color: transparent;
+    background-image: none;
+    border-color: #28a745!important;
+}
+.btn-outline-sjsuccess i {
+    color: #28a745!important;
+}
+.btn-outline-sjsuccess:hover {
+    color: #fff!important;
+    background-color: #28a745!important;
+    border-color: #28a745!important;
+}
+.btn-outline-sjsuccess:hover i {
+    color: #fff!important;
+}
+.btn-outline-sjwarning {
+    color: #ffc107!important;
+    background-color: transparent;
+    background-image: none;
+    border-color: #ffc107!important;
+}
+.btn-outline-sjwarning i {
+    color: #ffc107!important;
+}
+.btn-outline-sjwarning:hover {
+    color: #212529!important;
+    background-color: #ffc107!important;
+    border-color: #ffc107!important;
+}
+.btn-outline-sjwarning:hover i {
+    color: #fff!important;
+}
