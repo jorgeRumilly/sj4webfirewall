@@ -235,16 +235,16 @@ class FirewallStorage
     public function manageStorage(array $data) {
         // Validation simple
         if (
-            !isset($data['ip'], $data['log_event_reason'], $data['updateScore'], $data['score']) ||
+            !isset($data['ip'], $data['log_event_reason'], $data['update_score'], $data['score']) ||
             !is_string($data['ip']) ||
             !is_string($data['log_event_reason']) ||
-            !is_bool($data['updateScore']) ||
+            !is_bool($data['update_score']) ||
             !is_int($data['score'])
         ) {
             throw new InvalidArgumentException('Le tableau $data ne respecte pas le patron attendu.');
         }
         $ip = $data['ip'];
-        $updateScore = $data['updateScore'];
+        $updateScore = $data['update_score'];
         $score = $data['score'];
         $logEventReason = $data['log_event_reason'];
         if( $updateScore ) {

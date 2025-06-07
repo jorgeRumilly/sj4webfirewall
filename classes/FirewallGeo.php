@@ -20,14 +20,14 @@ class FirewallGeo
     public function getCountryCode($ip)
     {
         if (!$this->reader) {
-            return null;
+            throw new \Exception('GeoIP database not found.');
         }
 
         try {
             $record = $this->reader->country($ip);
             return $record->country->isoCode;
         } catch (\Exception $e) {
-            return null;
+            throw new \Exception('Error retrieving country code: ' . $e->getMessage());
         }
     }
 }
