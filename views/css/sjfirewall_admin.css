@@ -91,3 +91,38 @@ td div.btn-group {
 .btn-outline-sjwarning:hover i {
     color: #fff!important;
 }
+
+.btn-outline-info {
+    color: #17a2b8!important;
+    background-color: transparent;
+    background-image: none;
+    border-color: #17a2b8!important;
+}
+.btn-outline-sjinfo i {
+    color: #17a2b8!important;
+}
+.btn-outline-sjinfo:hover {
+    color: #fff!important;
+    background-color: #17a2b8!important;
+    border-color: #17a2b8!important;
+}
+.btn-outline-sjinfo:hover i {
+     color: #fff!important;
+}
+.btn-outline-sjsecondary {
+    color: #6c757d!important;
+    background-color: transparent;
+    background-image: none;
+    border-color: #6c757d!important;
+}
+.btn-outline-sjsecondary i {
+    color: #6c757d!important;
+}
+.btn-outline-sjsecondary:hover {
+    color: #fff!important;
+    background-color: #6c757d!important;
+    border-color: #6c757d!important;
+}
+.btn-outline-sjsecondary:hover i {
+    color: #fff!important;
+}
