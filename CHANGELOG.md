@@ -6,6 +6,18 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.2.0] - 2025-06-07
+### Ajouté
+- Ajout de la possibilité de bloquer/débloquer manuellement une IP depuis le Back-Office.
+
+### Corrigé
+- Correction d’un problème de gestion des logs.
+- Correction d’une erreur de type dans une clé du tableau de scoring.
+- Amélioration de la récupération du code pays depuis l'IP avec gestion des erreurs (`try/catch`).
+- Correction de la détection et du traitement des erreurs 404 et 403.
+
+---
+
 ## [1.1.0] - 2025-06-06
 ### Ajouté
 - Remplacement du système de log IP par un stockage journalier pour une meilleure traçabilité.
@@ -33,4 +45,3 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 - Page de logs dans le Back-Office (Admin Controller dédié).
 
 ---
-
