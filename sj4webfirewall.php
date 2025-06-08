@@ -14,7 +14,7 @@ class Sj4webFirewall extends Module
     {
         $this->name = 'sj4webfirewall';
         $this->tab = 'administration';
-        $this->version = '1.2.0';
+        $this->version = '1.2.1';
         $this->author = 'SJ4WEB.FR';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -32,7 +32,8 @@ class Sj4webFirewall extends Module
     {
         return parent::install() &&
             $this->registerHook('displayBackOfficeHeader') &&
-            $this->registerHook('displayHeader');
+            $this->registerHook('displayHeader') &&
+            $this->installTabs();
     }
 
     /**
@@ -44,8 +45,96 @@ class Sj4webFirewall extends Module
             Configuration::deleteByName($key);
         }
 
-        return parent::uninstall();
+        return parent::uninstall() && $this->uninstallTabs();
     }
+
+    public function installTabs()
+    {
+        // Vérifie si l'onglet parent existe déjà pour éviter doublon
+        if (Tab::getIdFromClassName('AdminSj4webFirewallParent')) {
+            return true;
+        }
+
+        // Onglet parent
+        $parentTab = new Tab();
+        $parentTab->class_name = 'AdminSj4webFirewallParent';
+        $parentTab->module = $this->name;
+//        $parentTab->id_parent = 0; // Racine
+        $parentTab->id_parent = Tab::getIdFromClassName('IMPROVE'); // Racine
+        $parentTab->active = 1;
+        $parentTab->icon = 'security'; // Icône de l'onglet
+
+        foreach (Language::getLanguages(false) as $lang) {
+            $parentTab->name[$lang['id_lang']] = $this->trans('SJ4WEB Firewall', [], 'Modules.Sj4webfirewall.Admin');
+        }
+
+        if (!$parentTab->add()) {
+            return false;
+        }
+
+        // Onglet Configuration
+        $configTab = new Tab();
+        $configTab->class_name = 'AdminSj4webFirewall';
+        $configTab->module = $this->name;
+        $configTab->id_parent = $parentTab->id;
+        $configTab->active = 1;
+        $configTab->icon = 'settings'; // Icône de l'onglet
+
+        foreach (Language::getLanguages(false) as $lang) {
+            $configTab->name[$lang['id_lang']] = $this->trans('Configuration', [], 'Modules.Sj4webfirewall.Admin');
+        }
+
+        if (!$configTab->add()) {
+            return false;
+        }
+
+        // Onglet Suivi
+        $logTab = new Tab();
+        $logTab->class_name = 'AdminSj4webFirewallLog';
+        $logTab->module = $this->name;
+        $logTab->id_parent = $parentTab->id;
+        $logTab->active = 1;
+        $logTab->icon = 'track_changes'; // Icône de l'onglet
+
+        foreach (Language::getLanguages(false) as $lang) {
+            $logTab->name[$lang['id_lang']] = $this->trans('Real-time tracking', [], 'Modules.Sj4webfirewall.Admin');
+        }
+
+        if (!$logTab->add()) {
+            return false;
+        }
+
+        // Onglet Logs (futur)
+        $statsTab = new Tab();
+        $statsTab->class_name = 'AdminSj4webFirewallStats';
+        $statsTab->module = $this->name;
+        $statsTab->id_parent = $parentTab->id;
+        $statsTab->active = 1;
+        $statsTab->icon = 'description'; // Icône de l'onglet
+
+        foreach (Language::getLanguages(false) as $lang) {
+            $statsTab->name[$lang['id_lang']] = $this->trans('Daily tracking logs', [], 'Modules.Sj4webfirewall.Admin');
+        }
+
+        if (!$statsTab->add()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function uninstallTabs()
+    {
+        foreach (['AdminSj4webFirewallParent', 'AdminSj4webFirewall', 'AdminSj4webFirewallLog', 'AdminSj4webFirewallStats'] as $class_name) {
+            $idTab = (int)Tab::getIdFromClassName($class_name);
+            if ($idTab) {
+                $tab = new Tab($idTab);
+                $tab->delete();
+            }
+        }
+        return true;
+    }
+
 
     public function getContent()
     {

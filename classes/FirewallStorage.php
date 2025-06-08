@@ -91,10 +91,12 @@ class FirewallStorage
                 'log' => [],
                 'updated_at' => time(),
                 'alerted' => false,
+                'country' => $this->country,
             ];
         }
         $this->data[$ip]['score'] += $variation;
         $this->data[$ip]['updated_at'] = time();
+        $this->data[$ip]['country'] = (empty($this->data[$ip]['country'])) ? $this->country : $this->data[$ip]['country'];
         // ✅ Si le score est redevenu acceptable, on enlève le blocage
         if ($this->data[$ip]['score'] > $this->scoreLimitBlock) {
             unset($this->data[$ip]['blocked_until']);
@@ -128,6 +130,7 @@ class FirewallStorage
                 'log' => [],
                 'updated_at' => time(),
                 'alerted' => false,
+                'country' => $this->country,
             ];
         } else {
             if (!isset($this->data[$ip]['count'])) {
@@ -253,8 +256,6 @@ class FirewallStorage
         $this->incrementVisit($ip);
         $this->logEvent($ip, $logEventReason);
     }
-
-
 
 }
 
