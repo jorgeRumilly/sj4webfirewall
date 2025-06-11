@@ -35,35 +35,19 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
                 return;
             }
 
-
+            // Get all entries
             if (is_array($data)) {
                 // On charge FirewallStorage avec les bons seuils
-                $storage = new FirewallStorage(
-                    (int)Configuration::get('SJ4WEB_FW_SCORE_LIMIT_BLOCK'),
-                    (int)Configuration::get('SJ4WEB_FW_SCORE_LIMIT_SLOW'),
-                    (int)Configuration::get('SJ4WEB_FW_BLOCK_DURATION'),
-                    (int)Configuration::get('SJ4WEB_FW_ALERT_THRESHOLD')
-                );
-
-                foreach ($data as $ip => $info) {
-                    $entries[] = [
-                        'ip' => $ip,
-                        'country' => $info['country'] ?? '-',
-                        'score' => (int)$info['score'],
-                        'status' => $storage->getStatusForIp($ip), // Ici la vraie méthode
-                        'count' => $info['count'] ?? 0,
-                        'log' => isset($info['log']) ? (array)$info['log'] : [],
-                        'last_log' => isset($info['log']) && count($info['log']) > 0
-                            ? end($info['log'])['time'] . ' - ' . end($info['log'])['reason']
-                            : '-',
-                        'first_seen' => isset($info['first_seen']) ? date('Y-m-d H:i:s', $info['first_seen']) : '-',
-                        'updated_at' => isset($info['updated_at']) ? date('Y-m-d H:i:s', $info['updated_at']) : '-',
-                        'whitelisted' => !empty($info['whitelisted']),
-                        'actions' => [], // Placeholder pour les actions
-                    ];
-                }
+                $entries = $this->getEntries($data, $entries);
             }
+
+            // Apply List Filters
+            $entries = $this->applyFilters($entries);
+
+            // Apply List Sort
+            $entries = $this->sortEntries($entries);
         }
+
         // HelperList
         $helper = new HelperList();
         $helper->module = $this->module;
@@ -98,9 +82,9 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
                 'title' => $this->trans('Status', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'select',
                 'list' => [
-                    ['normal' => $this->trans('Normal', [], 'Modules.Sj4webfirewall.Admin')],
-                    ['slow' => $this->trans('Slow', [], 'Modules.Sj4webfirewall.Admin')],
-                    ['blocked' => $this->trans('Blocked', [], 'Modules.Sj4webfirewall.Admin')],
+                    'normal' => $this->trans('Normal', [], 'Modules.Sj4webfirewall.Admin'),
+                    'slow' => $this->trans('Slow', [], 'Modules.Sj4webfirewall.Admin'),
+                    'blocked' => $this->trans('Blocked', [], 'Modules.Sj4webfirewall.Admin'),
                 ],
                 'filter_key' => 'status',
                 'filter' => true,
@@ -112,6 +96,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
                 'type' => 'number',
                 'align' => 'center',
                 'search' => false,
+                'filter' => false
             ],
             'first_seen' => [
                 'title' => $this->trans('First Activity', [], 'Modules.Sj4webfirewall.Admin'),
@@ -137,13 +122,6 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         $this->context->smarty->assign('content', $helper->generateList($entries, $fields_list));
 
     }
-    //        $this->context->smarty->assign([
-//            'firewall_logs' => $entries,
-//            'token' => Tools::getAdminTokenLite('AdminSj4webFirewallLog'),
-//        ]);
-//
-//        $this->setTemplate('firewall_logs.tpl');
-
 
     public function renderList()
     {
@@ -156,6 +134,15 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function postProcess()
     {
         parent::postProcess();
+
+        if (Tools::isSubmit('submitResetfirewall_logs')) {
+            $_GET = array_filter($_GET, function ($key) {
+                return strpos($key, 'firewall_logsFilter_') === false;
+            }, ARRAY_FILTER_USE_KEY);
+            $_POST = array_filter($_POST, function ($key) {
+                return strpos($key, 'firewall_logsFilter_') === false;
+            }, ARRAY_FILTER_USE_KEY);
+        }
 
         $action = Tools::getValue('action');
         $ip = Tools::getValue('ip');
@@ -345,6 +332,146 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         ]);
 
         $this->setTemplate('logs_view.tpl');
+    }
+
+    /**
+     * @param array $data
+     * @param array $entries
+     * @return array
+     */
+    public function getEntries(array $data, array $entries): array
+    {
+        $storage = new FirewallStorage(
+            (int)Configuration::get('SJ4WEB_FW_SCORE_LIMIT_BLOCK'),
+            (int)Configuration::get('SJ4WEB_FW_SCORE_LIMIT_SLOW'),
+            (int)Configuration::get('SJ4WEB_FW_BLOCK_DURATION'),
+            (int)Configuration::get('SJ4WEB_FW_ALERT_THRESHOLD')
+        );
+
+        foreach ($data as $ip => $info) {
+            $entries[] = [
+                'ip' => $ip,
+                'country' => $info['country'] ?? '-',
+                'score' => (int)$info['score'],
+                'status' => $storage->getStatusForIp($ip), // Ici la vraie méthode
+                'count' => $info['count'] ?? 0,
+                'log' => isset($info['log']) ? (array)$info['log'] : [],
+                'last_log' => isset($info['log']) && count($info['log']) > 0
+                    ? end($info['log'])['time'] . ' - ' . end($info['log'])['reason']
+                    : '-',
+                'first_seen' => isset($info['first_seen']) ? date('Y-m-d H:i:s', $info['first_seen']) : '-',
+                'updated_at' => isset($info['updated_at']) ? date('Y-m-d H:i:s', $info['updated_at']) : '-',
+                'whitelisted' => !empty($info['whitelisted']),
+                'actions' => [], // Placeholder pour les actions
+            ];
+        }
+        return $entries;
+    }
+
+    /**
+     * @param array $entries
+     * @return array
+     */
+    public function applyFilters(array $entries): array
+    {
+// Les filtres
+        $filter_ip = trim(Tools::getValue('firewall_logsFilter_ip', ''));
+        $filter_country = trim(Tools::getValue('firewall_logsFilter_country', ''));
+        $filter_status = trim(Tools::getValue('firewall_logsFilter_status', ''));
+        $filter_first_seen = Tools::getValue('firewall_logsFilter_first_seen', []);
+        $filter_logs = trim(Tools::getValue('firewall_logsFilter_last_log', ''));
+        $filter_updated_atto = Tools::getValue('firewall_logsFilter_updated_at', []);
+
+        if ($filter_ip) {
+            $entries = array_filter($entries, function ($entry) use ($filter_ip) {
+                return stripos($entry['ip'], $filter_ip) !== false;
+            });
+        }
+        if ($filter_country) {
+            $entries = array_filter($entries, function ($entry) use ($filter_country) {
+                return strtolower($entry['country']) === strtolower($filter_country);
+            });
+        }
+        if ($filter_status) {
+            $entries = array_filter($entries, function ($entry) use ($filter_status) {
+                return strtolower($entry['status']) === strtolower($filter_status);
+            });
+        }
+        $filter_first_seen_from = $filter_first_seen_to = '';
+        if (is_array($filter_first_seen) && count($filter_first_seen) > 0) {
+            $filter_first_seen_from = $filter_first_seen[0];
+            $filter_first_seen_to = ($filter_first_seen[1] ?? '');
+        }
+        if ($filter_first_seen_from || $filter_first_seen_to) {
+            $entries = array_filter($entries, function ($entry) use ($filter_first_seen_from, $filter_first_seen_to) {
+                $timestamp = strtotime($entry['first_seen']);
+                $firstSeen = strtotime(date('Y-m-d', $timestamp));
+                if ($filter_first_seen_from && $firstSeen < strtotime($filter_first_seen_from)) {
+                    return false;
+                }
+                if ($filter_first_seen_to && $firstSeen > strtotime($filter_first_seen_to)) {
+                    return false;
+                }
+                return true;
+            });
+        }
+        if ($filter_logs) {
+            $entries = array_filter($entries, function ($entry) use ($filter_logs) {
+                return stripos($entry['last_log'], $filter_logs) !== false;
+            });
+        }
+        $filter_updated_at = $filter_updated_to = '';
+        if (is_array($filter_updated_atto) && count($filter_updated_atto) > 0) {
+            $filter_updated_at = $filter_updated_atto[0];
+            $filter_updated_to = ($filter_updated_atto[1] ?? '');
+        }
+        if ($filter_updated_at || $filter_updated_to) {
+            $entries = array_filter($entries, function ($entry) use ($filter_updated_at, $filter_updated_to) {
+                $timestamp = strtotime($entry['updated_at']);
+                $updatedAt = strtotime(date('Y-m-d', $timestamp));
+                if ($filter_updated_at && $updatedAt < strtotime($filter_updated_at)) {
+                    return false;
+                }
+                if ($filter_updated_to && $updatedAt > strtotime($filter_updated_to)) {
+                    return false;
+                }
+                return true;
+            });
+        }
+        return $entries;
+    }
+
+    protected function sortEntries(array $entries): array
+    {
+        $orderby = Tools::getValue('firewall_logsOrderby');
+        $orderway = strtolower(Tools::getValue('firewall_logsOrderway')) === 'desc' ? SORT_DESC : SORT_ASC;
+
+        if (!$orderby || !isset($entries[0][$orderby])) {
+            return $entries;
+        }
+
+        usort($entries, function ($a, $b) use ($orderby, $orderway) {
+            $valA = $a[$orderby];
+            $valB = $b[$orderby];
+
+            // Si date format Y-m-d H:i:s
+            if (preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $valA) &&
+                preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $valB)) {
+                $valA = strtotime($valA);
+                $valB = strtotime($valB);
+            }
+
+            // Comparaison numérique si possible
+            if (is_numeric($valA) && is_numeric($valB)) {
+                $cmp = $valA <=> $valB;
+            } else {
+                $cmp = strcmp($valA, $valB);
+            }
+
+            return $orderway === SORT_DESC ? -$cmp : $cmp;
+        });
+
+        return $entries;
     }
 
 }

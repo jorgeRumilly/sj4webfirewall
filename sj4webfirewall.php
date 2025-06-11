@@ -157,7 +157,6 @@ class Sj4webFirewall extends Module
 
         $config = Sj4webFirewallConfigHelper::getAll();
         $ip = Tools::getRemoteAddr();
-
         $userAgent = $this->getUserAgent();
 
         $is_active_firewall = (bool)$config['SJ4WEB_FW_ACTIVATE_FIREWALL'] ?? false;
@@ -168,7 +167,6 @@ class Sj4webFirewall extends Module
         } catch (Exception $e) {
             $this->logAction($ip, $userAgent, 'Erreur de récupération de la configuration : ' . $e->getMessage());
         }
-
 
         try {
             // Parser les lignes multiples une seule fois ici si nécessaire :
