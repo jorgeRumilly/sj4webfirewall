@@ -48,18 +48,31 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
             $entries = $this->sortEntries($entries);
         }
 
+        // Pagination
+        $page = max(1, (int)Tools::getValue('submitFilterfirewall_logs', 1));
+        $limit = (int)Tools::getValue('firewall_logs_pagination', 50);
+        $offset = ($page - 1) * $limit;
+
+        $total = count($entries);
+        $entries = array_slice($entries, $offset, $limit);
+
         // HelperList
         $helper = new HelperList();
         $helper->module = $this->module;
         $helper->shopLinkType = '';
         $helper->simple_header = false;
         $helper->identifier = 'ip';
-//        $helper->actions = $this->getRowActions($entries[0] ?? []);
         $helper->title = $this->trans('Detected IPs History', [], 'Modules.Sj4webfirewall.Admin');
         $helper->table = 'firewall_logs';
         $helper->token = Tools::getAdminTokenLite('AdminSj4webFirewallLog');
         $helper->currentIndex = AdminController::$currentIndex;
         $helper->show_toolbar = true;
+        // HelperList pagination setup
+        $helper->listTotal = $total;
+        $helper->tpl_vars['pagination'] = [20, 50, 100, 300];
+        $helper->tpl_vars['show_toolbar'] = true;
+        $helper->tpl_vars['show_pagination'] = true;
+
 
         $fields_list = [
             'ip' => [
