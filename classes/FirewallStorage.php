@@ -36,13 +36,13 @@ class FirewallStorage
         }
 
         $this->filepath = $logsDir . 'ip_scores.json';
-        $this->scoreLimitBlock = (int) $scoreLimitBlock;
-        $this->scoreLimitSlow = (int) $scoreLimitSlow;
-        $this->blockDuration = (int) $blockDuration;
-        $this->scoreLimitAlert = (int) $scoreLimitAlert;
+        $this->scoreLimitBlock = (int)$scoreLimitBlock;
+        $this->scoreLimitSlow = (int)$scoreLimitSlow;
+        $this->blockDuration = (int)$blockDuration;
+        $this->scoreLimitAlert = (int)$scoreLimitAlert;
         $this->userAgent = $userAgent;
         $this->country = $country;
-        $this->sendAlertEnabled = (bool) $sendAlertEnabled;
+        $this->sendAlertEnabled = (bool)$sendAlertEnabled;
         $this->load();
     }
 
@@ -89,6 +89,7 @@ class FirewallStorage
                 'score' => 0,
                 'count' => 0,
                 'log' => [],
+                'contact_attempts' => [],
                 'first_seen' => time(),
                 'updated_at' => time(),
                 'alerted' => false,
@@ -129,6 +130,7 @@ class FirewallStorage
                 'score' => 0,
                 'count' => 1,
                 'log' => [],
+                'contact_attempts' => [],
                 'first_seen' => time(),
                 'updated_at' => time(),
                 'alerted' => false,
@@ -211,9 +213,20 @@ class FirewallStorage
      */
     protected function load()
     {
-        if (file_exists($this->filepath)) {
-            $json = file_get_contents($this->filepath);
+
+        if (!file_exists($this->filepath)) {
+            $this->data = [];
+            return;
+        }
+
+        $fp = fopen($this->filepath, 'r');
+        if ($fp && flock($fp, LOCK_SH)) { // Verrou lecture
+            $json = stream_get_contents($fp);
+            flock($fp, LOCK_UN);
+            fclose($fp);
+
             $this->data = json_decode($json, true) ?: [];
+
             // Patch pour ajouter 'alerted'
             foreach ($this->data as &$ipData) {
                 if (!isset($ipData['alerted'])) {
@@ -221,16 +234,59 @@ class FirewallStorage
                 }
             }
             unset($ipData);
+        } elseif ($fp) {
+            fclose($fp);
+            $this->data = [];
         }
     }
 
     /**
      * Sauvegarde les données dans le fichier JSON.
      */
-    protected function save()
+    /**
+     * Sauvegarde le fichier JSON des scores IP de manière atomique et sécurisée.
+     */
+    public function save()
     {
-        file_put_contents($this->filepath, json_encode($this->data, JSON_PRETTY_PRINT));
+        if (!is_array($this->data)) {
+            return;
+        }
+
+        $dir = dirname($this->filepath);
+        $tempFile = tempnam($dir, 'tmp_fw_');
+
+        if ($tempFile === false) {
+            // Échec création fichier temporaire
+            return;
+        }
+
+        $json = json_encode($this->data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        $fp = fopen($tempFile, 'c');
+        if ($fp === false) {
+            return;
+        }
+
+        // Lock en écriture exclusive
+        if (flock($fp, LOCK_EX)) {
+            ftruncate($fp, 0);
+            fwrite($fp, $json);
+            fflush($fp); // Flush au disque
+            flock($fp, LOCK_UN);
+            fclose($fp);
+
+            // Remplace l’ancien fichier par le nouveau (atomique sur système de fichiers Unix)
+            rename($tempFile, $this->filepath);
+        } else {
+            fclose($fp);
+            unlink($tempFile);
+        }
     }
+
+//    protected function save()
+//    {
+//        file_put_contents($this->filepath, json_encode($this->data, JSON_PRETTY_PRINT));
+//    }
 
     /**
      * @param array{
@@ -240,7 +296,8 @@ class FirewallStorage
      *   score: int
      * } $data
      */
-    public function manageStorage(array $data) {
+    public function manageStorage(array $data)
+    {
         // Validation simple
         if (
             !isset($data['ip'], $data['log_event_reason'], $data['update_score'], $data['score']) ||
@@ -255,12 +312,33 @@ class FirewallStorage
         $updateScore = $data['update_score'];
         $score = $data['score'];
         $logEventReason = $data['log_event_reason'];
-        if( $updateScore ) {
+        if ($updateScore) {
             $this->updateScore($ip, $score);
         }
         $this->incrementVisit($ip);
         $this->logEvent($ip, $logEventReason);
     }
+
+    public function incrementHourlyContactAttempt($ip)
+    {
+        if (!isset($this->data[$ip])) {
+            $this->updateScore($ip, 0);
+        }
+
+        $hourKey = date('YmdH');
+        if (!isset($this->data[$ip]['contact_attempts'])) {
+            $this->data[$ip]['contact_attempts'] = [];
+        }
+        if (!isset($this->data[$ip]['contact_attempts'][$hourKey])) {
+            $this->data[$ip]['contact_attempts'][$hourKey] = 0;
+        }
+
+        $this->data[$ip]['contact_attempts'][$hourKey]++;
+        $this->data[$ip]['updated_at'] = time();
+
+        $this->save();
+    }
+
 
 }
 

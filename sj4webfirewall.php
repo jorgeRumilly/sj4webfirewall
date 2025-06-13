@@ -14,7 +14,7 @@ class Sj4webFirewall extends Module
     {
         $this->name = 'sj4webfirewall';
         $this->tab = 'administration';
-        $this->version = '1.3.0';
+        $this->version = '1.4.0';
         $this->author = 'SJ4WEB.FR';
         $this->need_instance = 0;
         $this->bootstrap = true;
@@ -33,6 +33,7 @@ class Sj4webFirewall extends Module
         return parent::install() &&
             $this->registerHook('displayBackOfficeHeader') &&
             $this->registerHook('displayHeader') &&
+            $this->registerHook('actionContactFormSubmitBefore');
             $this->installTabs();
     }
 
@@ -387,6 +388,58 @@ class Sj4webFirewall extends Module
     {
         return $_SERVER['HTTP_USER_AGENT'] ?? '';
     }
+
+    public function hookActionContactFormSubmitBefore(array $params)
+    {
+        $ip = Tools::getRemoteAddr();
+        $ts = Tools::getValue('sj4web_fw_ts');
+        $token = Tools::getValue('sj4web_fw_token');
+
+        // Vérif honeypot : champ doit être vide
+        if (!empty($token)) {
+            $this->handleSpamAttempt($ip, 'honeypot');
+        }
+
+        // Vérif timer : au moins 5 secondes entre affichage et soumission
+        if (!$ts || (time() - (int) $ts < 5)) {
+            $this->handleSpamAttempt($ip, 'timer');
+        }
+
+        // Compteur IP dans la dernière heure
+        if ($this->isHumanSpamLimitReached($ip)) {
+            $this->handleSpamAttempt($ip, 'human-limit', true);
+        }
+
+        $this->logHumanContactAttempt($ip);
+    }
+
+    protected function handleSpamAttempt($ip, $type, $is_human = false)
+    {
+        FirewallStorage::logAction($ip, "contact_blocked: $type");
+
+        // Bloque immédiatement l’IP
+        FirewallStorage::blockIp($ip);
+
+        // Envoie l'alerte si besoin
+        if ($is_human) {
+            FirewallMailer::sendAlert("IP $ip a dépassé la limite de messages de contact.");
+        }
+
+        die(); // Blocage silencieux
+    }
+
+    protected function isHumanSpamLimitReached($ip)
+    {
+        $log = FirewallStorage::getHourlyContactAttempts($ip);
+        return ($log >= 2);
+    }
+
+    protected function logHumanContactAttempt($ip)
+    {
+        FirewallStorage::incrementHourlyContactAttempt($ip);
+    }
+
+
 
     public function isUsingNewTranslationSystem()
     {
