@@ -14,7 +14,7 @@ class Sj4webFirewall extends Module
     {
         $this->name = 'sj4webfirewall';
         $this->tab = 'administration';
-        $this->version = '1.2.1';
+        $this->version = '1.3.0';
         $this->author = 'SJ4WEB.FR';
         $this->need_instance = 0;
         $this->bootstrap = true;

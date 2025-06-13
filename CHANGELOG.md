@@ -6,6 +6,20 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.3.0] - 2025-06-11
+### Ajouté
+- Ajout d’un tri dynamique dans la page des logs IP (`HelperList`) sur tous les champs sauf actions.
+- Tri différencié selon le type de colonnes : chaînes, entiers, dates (`usort` sur `Tools::getValue()`).
+- Filtrage par date (plages `first_seen` / `updated_at`) via comparaison nette des jours (`Y-m-d`) sans heuristique bancale.
+- Bouton "Réinitialiser les filtres" fonctionnel, suppression ciblée des clés `firewall_logsFilter_*` dans `$_GET` et `$_POST`.
+- **Création de plusieurs onglets (Tabs) dans le Back-Office** : logs IP, stats, configuration, etc.
+
+### Amélioré
+- Séparation du tri/filtrage dans `applyFilters()` pour améliorer la lisibilité.
+- Renforcement de la propreté et portabilité : suppression des formats de date codés en dur.
+
+---
+
 ## [1.2.0] - 2025-06-07
 ### Ajouté
 - Ajout de la possibilité de bloquer/débloquer manuellement une IP depuis le Back-Office.

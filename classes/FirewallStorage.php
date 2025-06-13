@@ -192,16 +192,19 @@ class FirewallStorage
     /**
      * Supprime les IPs inactives depuis plus de X secondes.
      */
-    public function cleanup($timeout = 86400)
-    {
-        $now = time();
-        foreach ($this->data as $ip => $entry) {
-            if (($now - $entry['updated_at']) > $timeout) {
-                unset($this->data[$ip]);
-            }
-        }
-        $this->save();
-    }
+//    public function cleanup($timeout = 86400)
+//    {
+//        if($timeout == 0) {
+//            return; // Pas de nettoyage si le timeout est 0
+//        }
+//        $now = time();
+//        foreach ($this->data as $ip => $entry) {
+//            if (($now - $entry['updated_at']) > $timeout) {
+//                unset($this->data[$ip]);
+//            }
+//        }
+//        $this->save();
+//    }
 
     /**
      * Charge les données depuis le fichier JSON.
