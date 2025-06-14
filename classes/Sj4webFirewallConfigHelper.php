@@ -15,7 +15,11 @@ class Sj4webFirewallConfigHelper
         'SJ4WEB_FW_LOG_ENABLED',
         'SJ4WEB_FW_ALERT_EMAIL_ENABLED',
         'SJ4WEB_FW_ALERT_RECIPIENTS',
-        'SJ4WEB_FW_ALERT_THRESHOLD'
+        'SJ4WEB_FW_ALERT_THRESHOLD',
+        'SJ4WEB_FW_CONTACT_PROTECTION_ENABLED',
+        'SJ4WEB_FW_CONTACT_MAX_PER_PERIOD',
+        'SJ4WEB_FW_CONTACT_PERIOD_MINUTES',
+        'SJ4WEB_FW_CONTACT_MAX_DAILY'
     ];
 
     protected static $defaults = null;

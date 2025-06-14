@@ -6,6 +6,23 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.4.0] - 2025-06-13
+### Ajouté
+- **Protection complète du formulaire de contact PrestaShop** :
+    - Hook `actionContactFormSubmitBefore` intégré via override contrôlé.
+    - Blocage des bots par honeypot (`sj4web_fw_token`) et timer minimum (5 sec).
+    - Limitation des envois : nombre de messages par période glissante (X messages / Y minutes), configurable dans le BO.
+    - Seuil journalier de sécurité : blocage dur de l’IP et alerte email si trop d’envois.
+    - Exclusion des utilisateurs connectés de la limitation.
+    - Journalisation des tentatives (`contact_attempts`, `daily_attempts`).
+    - Messages d’erreur propres pour les visiteurs bloqués temporairement.
+    - Aide claire et traduisible dans le BO (`_contactform_help.tpl`), bonne pratique : override dans le thème, pas dans le module.
+
+### Amélioré
+- Refonte complète du système de limitation des formulaires pour qu’il soit flexible, activable, et adapté à tous les contextes e-commerce.
+
+---
+
 ## [1.3.0] - 2025-06-11
 ### Ajouté
 - Ajout d’un tri dynamique dans la page des logs IP (`HelperList`) sur tous les champs sauf actions.

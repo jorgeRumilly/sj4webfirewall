@@ -33,7 +33,7 @@ class Sj4webFirewall extends Module
         return parent::install() &&
             $this->registerHook('displayBackOfficeHeader') &&
             $this->registerHook('displayHeader') &&
-            $this->registerHook('actionContactFormSubmitBefore');
+            $this->registerHook('actionContactFormSubmitBefore') &&
             $this->installTabs();
     }
 
@@ -156,18 +156,14 @@ class Sj4webFirewall extends Module
     public function hookDisplayHeader()
     {
 
+        // Initialisation des variables de travail
         $config = Sj4webFirewallConfigHelper::getAll();
-        $ip = Tools::getRemoteAddr();
-        $userAgent = $this->getUserAgent();
+
+        /** @var $storage FirewallStorage */
+
+        list($ip, $userAgent, $country, $storage) = $this->initWorkingVars($config);
 
         $is_active_firewall = (bool)$config['SJ4WEB_FW_ACTIVATE_FIREWALL'] ?? false;
-        $geo = new FirewallGeo();
-        $country = null;
-        try {
-            $country = $geo->getCountryCode($ip) ?: 'null';
-        } catch (Exception $e) {
-            $this->logAction($ip, $userAgent, 'Erreur de récupération de la configuration : ' . $e->getMessage());
-        }
 
         try {
             // Parser les lignes multiples une seule fois ici si nécessaire :
@@ -177,15 +173,6 @@ class Sj4webFirewall extends Module
                 }
             }
 
-            $storage = new FirewallStorage(
-                (int)$config['SJ4WEB_FW_SCORE_LIMIT_BLOCK'],
-                (int)$config['SJ4WEB_FW_SCORE_LIMIT_SLOW'],
-                (int)$config['SJ4WEB_FW_BLOCK_DURATION'],
-                (int)$config['SJ4WEB_FW_ALERT_THRESHOLD'],
-                $userAgent,
-                $country,
-                (bool)$config['SJ4WEB_FW_ALERT_EMAIL_ENABLED']
-            );
             $score = $storage->getScore($ip);
 
             // 1. Vérification des IPs autorisées (whitelist)
@@ -384,65 +371,142 @@ class Sj4webFirewall extends Module
         return (ord($ip_bin[$bytes]) & $mask) === (ord($subnet_bin[$bytes]) & $mask);
     }
 
+    /**
+     * Récupère l'user-agent du visiteur.
+     * Utilisé pour le filtrage et la journalisation.
+     *
+     * @return string
+     */
     protected function getUserAgent()
     {
         return $_SERVER['HTTP_USER_AGENT'] ?? '';
     }
 
+    /**
+     * Hook exécuté avant la soumission du formulaire de contact.
+     * Permet de filtrer les soumissions de formulaire de contact pour éviter le spam.
+     *
+     * @param array $params
+     */
     public function hookActionContactFormSubmitBefore(array $params)
     {
-        $ip = Tools::getRemoteAddr();
+
+        $config = Sj4webFirewallConfigHelper::getAll();
+        $is_contact_protection_enabled = (bool)$config['SJ4WEB_FW_CONTACT_PROTECTION_ENABLED'] ?? false;
+
+        if ($this->context->customer->isLogged() || !$is_contact_protection_enabled) {
+            return; // Pas de limite pour les utilisateurs connectés ou si la protection est désactivée
+        }
+
         $ts = Tools::getValue('sj4web_fw_ts');
         $token = Tools::getValue('sj4web_fw_token');
+        /** @var $storage FirewallStorage */
+        list($ip, $userAgent, $country, $storage) = $this->initWorkingVars($config);
 
-        // Vérif honeypot : champ doit être vide
+        // 1. Honeypot
         if (!empty($token)) {
-            $this->handleSpamAttempt($ip, 'honeypot');
+            $storage->logEvent($ip, 'contact_blocked: honeypot');
+            $storage->blockIp($ip);
+            die();
         }
 
-        // Vérif timer : au moins 5 secondes entre affichage et soumission
-        if (!$ts || (time() - (int) $ts < 5)) {
-            $this->handleSpamAttempt($ip, 'timer');
+        // 2. Timer
+        if (!$ts || (time() - (int)$ts < 5)) {
+            $storage->logEvent($ip, 'contact_blocked: timer < 5s');
+            $storage->blockIp($ip);
+            die();
         }
 
-        // Compteur IP dans la dernière heure
-        if ($this->isHumanSpamLimitReached($ip)) {
-            $this->handleSpamAttempt($ip, 'human-limit', true);
+        // 3. Limite personnalisée
+        $max = (int)$config['SJ4WEB_FW_CONTACT_MAX_PER_PERIOD'];
+        $minutes = (int)$config['SJ4WEB_FW_CONTACT_PERIOD_MINUTES'];
+        $maxDaily = (int)$config['SJ4WEB_FW_CONTACT_MAX_DAILY'];
+
+        $recentAttempts = $storage->getContactAttemptsInLastXMinutes($ip, $minutes);
+        $dailyAttempts = $storage->getDailyContactAttempts($ip);
+
+        if ($dailyAttempts >= $maxDaily) {
+            $storage->logEvent($ip, 'contact_blocked: spam (daily limit)');
+            $storage->blockIp($ip);
+            $message_text = $this->trans('Maximum number of contact form messages reached for today: %d.', [$maxDaily], 'Modules.Sj4webfirewall.Shop');
+            FirewallMailer::sendAlert($ip, $userAgent, 0, $country, $message_text);
+            $msg = $this->trans(
+                'You have reached the maximum number of contact form messages allowed for today. Due to spam suspicion, your IP has been blocked.',
+                [],
+                'Modules.Sj4webfirewall.Shop'
+            );
+            $this->context->controller->errors[] = $msg;
+            return;
         }
 
-        $this->logHumanContactAttempt($ip);
+        if ($recentAttempts >= $max) {
+            $msg = $this->trans(
+                'You have reached the maximum number of contact form messages allowed in this period. Please try again later.',
+                [],
+                'Modules.Sj4webfirewall.Shop'
+            );
+            $this->context->controller->errors[] = $msg;
+            return;
+        }
+
+        // 4. Tout est OK
+        $storage->incrementHourlyContactAttempt($ip);
     }
 
-    protected function handleSpamAttempt($ip, $type, $is_human = false)
+    /**
+     * @param string $ip
+     * @param $userAgent
+     * @return string|null
+     */
+    public function getCountry(string $ip, $userAgent = null): ?string
     {
-        FirewallStorage::logAction($ip, "contact_blocked: $type");
-
-        // Bloque immédiatement l’IP
-        FirewallStorage::blockIp($ip);
-
-        // Envoie l'alerte si besoin
-        if ($is_human) {
-            FirewallMailer::sendAlert("IP $ip a dépassé la limite de messages de contact.");
+        $geo = new FirewallGeo();
+        $country = null;
+        try {
+            $country = $geo->getCountryCode($ip) ?: 'null';
+        } catch (Exception $e) {
+            $this->logAction($ip, $userAgent ?: 'N/A', 'Erreur de récupération de la configuration : ' . $e->getMessage());
         }
-
-        die(); // Blocage silencieux
+        return $country;
     }
 
-    protected function isHumanSpamLimitReached($ip)
+    /**
+     * Initialise les variables de travail pour le FirewallStorage
+     * Permet d'initialiser $ip, $userAgent, $country et $storage.
+     * @param null $config
+     * @return array
+     */
+    public function initWorkingVars($config = null): array
     {
-        $log = FirewallStorage::getHourlyContactAttempts($ip);
-        return ($log >= 2);
+        if ($config === null) {
+            $config = Sj4webFirewallConfigHelper::getAll();
+        }
+        $ip = $this->getIp();
+        $userAgent = $this->getUserAgent();
+
+        //Recupère le pays de l'IP
+        $country = $this->getCountry($ip, $userAgent);
+
+        $storage = new FirewallStorage(
+            (int)$config['SJ4WEB_FW_SCORE_LIMIT_BLOCK'],
+            (int)$config['SJ4WEB_FW_SCORE_LIMIT_SLOW'],
+            (int)$config['SJ4WEB_FW_BLOCK_DURATION'],
+            (int)$config['SJ4WEB_FW_ALERT_THRESHOLD'],
+            $userAgent,
+            $country,
+            (bool)$config['SJ4WEB_FW_ALERT_EMAIL_ENABLED']
+        );
+        return array($ip, $userAgent, $country, $storage);
     }
 
-    protected function logHumanContactAttempt($ip)
-    {
-        FirewallStorage::incrementHourlyContactAttempt($ip);
+    protected function getIp() {
+        $ip = Tools::getRemoteAddr();
+        return $ip;
     }
-
-
 
     public function isUsingNewTranslationSystem()
     {
         return true;
     }
+
 }

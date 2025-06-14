@@ -3,7 +3,7 @@ use PrestaShop\PrestaShop\Adapter\SymfonyContainer;
 
 class FirewallMailer
 {
-    public static function sendAlert($ip, $userAgent, $score, $country = 'N/A')
+    public static function sendAlert($ip, $userAgent, $score, $country = 'N/A', $message = '')
     {
 
         if (!Configuration::get('SJ4WEB_FW_ALERT_EMAIL_ENABLED')) {
@@ -22,11 +22,16 @@ class FirewallMailer
         $langId = (int)Configuration::get('PS_LANG_DEFAULT');
         $shopId = (int)Context::getContext()->shop->id;
 
+        $message_text = $message;
+        $message = '<li>'.$message.'</li>';
+
         $templateVars = [
             '{ip}' => $ip,
             '{user_agent}' => $userAgent,
             '{score}' => $score,
             '{country}' => $country,
+            '{message}' => $message,
+            '{message_text}' => $message_text,
         ];
 
         $subject = $translator->trans('Firewall Alert - Suspicious Activity Detected', [], 'Modules.Sj4webfirewall.Admin');

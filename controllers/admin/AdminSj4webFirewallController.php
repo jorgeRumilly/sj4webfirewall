@@ -29,6 +29,11 @@ class AdminSj4webFirewallController extends ModuleAdminController
      */
     public function renderForm()
     {
+        $html_render_contactform_notice = '<div class="alert alert-info">';
+        $html_render_contactform_notice .= $this->context->smarty->fetch($this->module->getLocalPath() . 'views/templates/admin/sj4web_firewall/_contactform_help.tpl');
+        $html_render_contactform_notice .= '</div>';
+
+
         $fields_form = [
             'form' => [
                 'legend' => [
@@ -125,6 +130,52 @@ class AdminSj4webFirewallController extends ModuleAdminController
                         'rows' => 3,
                         'desc' => $this->trans('Ex : RU, CN, IR', [], 'Modules.Sj4webfirewall.Admin'),
                     ],
+                    [
+                        'type' => 'html',
+                        'name' => 'html_data',
+                        'html_content' => '<p>&nbsp;</p><hr><h3>'.$this->trans('Contact form protection', [], 'Modules.Sj4webfirewall.Admin').'</h3>',
+                    ],
+                    [
+                        'type' => 'switch',
+                        'label' => $this->trans('Activate contact form protection', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_CONTACT_PROTECTION_ENABLED',
+                        'is_bool' => true,
+                        'values' => [
+                            ['id' => 'active_on', 'value' => 1, 'label' => $this->trans('Yes', [], 'Admin.Global')],
+                            ['id' => 'active_off', 'value' => 0, 'label' => $this->trans('No', [], 'Admin.Global')],
+                        ],
+                        'desc' => $this->trans('Enable bot and spam protection on the contact form (honeypot, timer, rate limit).', [], 'Modules.Sj4webfirewall.Admin'),
+                    ],
+                    [
+                        'type' => 'html',
+                        'name' => 'SJ4WEB_FW_CONTACTFORM_NOTICE',
+                        'label' => $this->trans('Important: Manual integration required', [], 'Modules.Sj4webfirewall.Admin'),
+                        'html_content' => $html_render_contactform_notice,
+                    ],
+
+                    [
+                        'type' => 'text',
+                        'label' => $this->trans('Max contact form messages per day (same IP)', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_CONTACT_MAX_DAILY',
+                        'desc' => $this->trans('Recommended: 6. Above this, the IP is blocked silently.', [], 'Modules.Sj4webfirewall.Admin'),
+                        'class' => 'fixed-width-sm',
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->trans('Max messages per period (non logged-in visitors)', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_CONTACT_MAX_PER_PERIOD',
+                        'desc' => $this->trans('Example: 2 messages', [], 'Modules.Sj4webfirewall.Admin'),
+                        'class' => 'fixed-width-sm',
+                    ],
+                    [
+                        'type' => 'text',
+                        'label' => $this->trans('Period duration in minutes', [], 'Modules.Sj4webfirewall.Admin'),
+                        'name' => 'SJ4WEB_FW_CONTACT_PERIOD_MINUTES',
+                        'desc' => $this->trans('Example: 60 minutes', [], 'Modules.Sj4webfirewall.Admin'),
+                        'class' => 'fixed-width-sm',
+                    ],
+
+
                     [
                         'type' => 'html',
                         'name' => 'html_data',

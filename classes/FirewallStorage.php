@@ -99,12 +99,12 @@ class FirewallStorage
         $this->data[$ip]['score'] += $variation;
         $this->data[$ip]['updated_at'] = time();
         $this->data[$ip]['country'] = (empty($this->data[$ip]['country'])) ? $this->country : $this->data[$ip]['country'];
-        // ✅ Si le score est redevenu acceptable, on enlève le blocage
+        // Si le score est redevenu acceptable, on enlève le blocage
         if ($this->data[$ip]['score'] > $this->scoreLimitBlock) {
             unset($this->data[$ip]['blocked_until']);
         }
 
-        // 🚨 Ajout d'une alerte si seuil dépassé et pas encore alerté
+        // Ajout d'une alerte si seuil dépassé et pas encore alerté
         if (
             $this->sendAlertEnabled &&
             $this->data[$ip]['score'] <= $this->scoreLimitAlert &&
@@ -173,7 +173,7 @@ class FirewallStorage
     /**
      * Ajoute un évènement au journal d'une IP.
      */
-    public function logEvent($ip, $reason)
+    public function logEvent($ip, $reason): void
     {
         if (!isset($this->data[$ip])) {
             $this->updateScore($ip, 0);
@@ -211,7 +211,7 @@ class FirewallStorage
     /**
      * Charge les données depuis le fichier JSON.
      */
-    protected function load()
+    protected function load(): void
     {
 
         if (!file_exists($this->filepath)) {
@@ -241,12 +241,9 @@ class FirewallStorage
     }
 
     /**
-     * Sauvegarde les données dans le fichier JSON.
-     */
-    /**
      * Sauvegarde le fichier JSON des scores IP de manière atomique et sécurisée.
      */
-    public function save()
+    public function save(): void
     {
         if (!is_array($this->data)) {
             return;
@@ -283,12 +280,8 @@ class FirewallStorage
         }
     }
 
-//    protected function save()
-//    {
-//        file_put_contents($this->filepath, json_encode($this->data, JSON_PRETTY_PRINT));
-//    }
-
     /**
+     * Gère le stockage des données pour une IP spécifique.
      * @param array{
      *   ip: string,
      *   log_event_reason: string,
@@ -319,26 +312,103 @@ class FirewallStorage
         $this->logEvent($ip, $logEventReason);
     }
 
-    public function incrementHourlyContactAttempt($ip)
+    /**
+     * Incrémente le compteur de tentatives de contact pour une IP spécifique.
+     * Utilisé pour suivre les tentatives de contact (par exemple, via un formulaire).
+     * @param $ip
+     * @return void
+     */
+    public function incrementHourlyContactAttempt($ip): void
     {
         if (!isset($this->data[$ip])) {
-            $this->updateScore($ip, 0);
+            $this->updateScore($ip, 0); // Initialise l'entrée si absente
         }
 
         $hourKey = date('YmdH');
+        $dayKey = date('Ymd');
+
+        // Horaire
         if (!isset($this->data[$ip]['contact_attempts'])) {
             $this->data[$ip]['contact_attempts'] = [];
         }
         if (!isset($this->data[$ip]['contact_attempts'][$hourKey])) {
             $this->data[$ip]['contact_attempts'][$hourKey] = 0;
         }
-
         $this->data[$ip]['contact_attempts'][$hourKey]++;
+
+        // Journalier
+        if (!isset($this->data[$ip]['daily_attempts'])) {
+            $this->data[$ip]['daily_attempts'] = [];
+        }
+        if (!isset($this->data[$ip]['daily_attempts'][$dayKey])) {
+            $this->data[$ip]['daily_attempts'][$dayKey] = 0;
+        }
+        $this->data[$ip]['daily_attempts'][$dayKey]++;
+
         $this->data[$ip]['updated_at'] = time();
 
         $this->save();
     }
 
+
+    /**
+     * Incrémente le compteur de tentatives de contact pour une IP spécifique
+     * sur une base quotidienne.
+     * @param $ip
+     * @return int|null
+     */
+    public function getDailyContactAttempts($ip): ?int
+    {
+        $key = date('Ymd');
+        return $this->data[$ip]['daily_attempts'][$key] ?? 0;
+    }
+
+    /**
+     * Récupère le nombre de tentatives de contact pour une IP spécifique
+     * dans les X dernières minutes.
+     *
+     * @param string $ip
+     * @param int $minutes Nombre de minutes à considérer
+     * @return int Nombre de tentatives de contact dans la période spécifiée
+     */
+    public function getContactAttemptsInLastXMinutes($ip, $minutes)
+    {
+        if (!isset($this->data[$ip]['contact_attempts'])) {
+            return 0;
+        }
+
+        $threshold = time() - ($minutes * 60);
+        $count = 0;
+
+        foreach ($this->data[$ip]['contact_attempts'] as $key => $val) {
+            $timestamp = strtotime(substr($key, 0, 8) . ' ' . substr($key, 8, 2) . ':00:00');
+            if ($timestamp >= $threshold) {
+                $count += $val;
+            }
+        }
+
+        return $count;
+    }
+
+
+    /**
+     * Bloque une IP pour une durée définie.
+     * Met à jour le champ 'blocked_until' de l'entrée IP.
+     *
+     * @param string $ip
+     */
+    public function blockIp($ip): void
+    {
+        $now = time();
+        if (!isset($this->data[$ip])) {
+            $this->updateScore($ip, 0); // Crée l'entrée si inexistante
+        }
+
+        $this->data[$ip]['blocked_until'] = $now + $this->blockDuration;
+        $this->data[$ip]['updated_at'] = $now;
+
+        $this->save();
+    }
 
 }
 

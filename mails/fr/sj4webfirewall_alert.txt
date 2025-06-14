@@ -4,5 +4,5 @@ IP : {ip}
 Pays : {country}
 User-Agent : {user_agent}
 Score actuel : {score}
-
+{message_text}
 Cette IP pourrait représenter une menace pour votre site.
