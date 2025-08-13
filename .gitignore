@@ -5,3 +5,7 @@
 *.zip
 vendor/
 node_modules/
+config_fr.xml 
+logs/*/*.json
+logs/*.json
+logs/*.log
