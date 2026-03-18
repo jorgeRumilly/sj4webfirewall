@@ -6,6 +6,26 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/)
 
 ---
 
+## [1.5.0] - 2026-03-18
+### Ajoute
+- Migration vers une persistance SQL pour l'etat IP, les evenements, les tentatives du formulaire de contact et les statistiques journalieres.
+- Script d'upgrade `1.5.0` pour creer les tables et importer les entrees legacy utiles depuis `ip_scores.json`.
+- Dossier `sql/` ajoute au module avec scripts d'installation et de desinstallation.
+
+### Ameliore
+- Forte reduction des ecritures disque sur chaque requete front.
+- Le stockage detaille ne suit plus le trafic nominal et les bots safe comme auparavant.
+- La page BO des IP detectees lit desormais la nouvelle persistance SQL au lieu du gros JSON monolithique.
+- Le fichier `firewall.log` respecte maintenant le switch `SJ4WEB_FW_LOG_ENABLED`.
+- Les statistiques journalieres BO sont de nouveau exploitables via la base SQL.
+- Les listes de bots safe/malveillants sont nettoyees et enrichies automatiquement pour limiter les faux positifs.
+- Les compteurs `404/403` sont consolides en fin de requete, lorsque le code HTTP reel est connu.
+- Une purge automatique journaliere limite desormais la croissance des tables SQL.
+
+### Corrige
+- Suppression de la dependance runtime au fichier `ip_scores.json`, cause principale des fichiers temporaires/fantomes et des ralentissements IO.
+- Correction de la logique de persistance qui pouvait laisser des fichiers temporaires orphelins.
+
 ## [1.4.0] - 2025-06-13
 ### Ajouté
 - **Protection complète du formulaire de contact PrestaShop** :

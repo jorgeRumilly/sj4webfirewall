@@ -7,7 +7,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function __construct()
     {
         $this->bootstrap = true;
-        $this->className = 'AdminSj4webFirewallLogController';
+        $this->className = false;
         $this->table = 'sj4web_firewall_log';
         $this->lang = false;
         $this->explicitSelect = false;
@@ -23,40 +23,26 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         parent::initContent();
 
         $this->meta_title = $this->trans('IP Logs - sj4webfirewall', [], 'Modules.Sj4webfirewall.Admin');
-        // https://chatgpt.com/share/680686b5-e248-8013-a918-38d62d960f04
-        $filepath = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/ip_scores.json';
-        $entries = [];
-        if (file_exists($filepath)) {
-            $json = file_get_contents($filepath);
-            $data = json_decode($json, true);
+        $storage = $this->buildStorage();
 
-            if ((int)Tools::getValue('viewlogs') && Tools::getValue('ip')) {
-                $this->renderLogsView(Tools::getValue('ip'));
-                return;
-            }
+        if ((int) Tools::getValue('viewlogs') && Tools::getValue('ip')) {
+            $this->renderLogsView($storage, Tools::getValue('ip'));
 
-            // Get all entries
-            if (is_array($data)) {
-                // On charge FirewallStorage avec les bons seuils
-                $entries = $this->getEntries($data, $entries);
-            }
-
-            // Apply List Filters
-            $entries = $this->applyFilters($entries);
-
-            // Apply List Sort
-            $entries = $this->sortEntries($entries);
+            return;
         }
 
-        // Pagination
-        $page = max(1, (int)Tools::getValue('submitFilterfirewall_logs', 1));
-        $limit = (int)Tools::getValue('firewall_logs_pagination', 50);
+        $entries = $storage->getTrackedEntries();
+        $entries = $this->markWhitelistedEntries($entries);
+        $entries = $this->applyFilters($entries);
+        $entries = $this->sortEntries($entries);
+
+        $page = max(1, (int) Tools::getValue('submitFilterfirewall_logs', 1));
+        $limit = (int) Tools::getValue('firewall_logs_pagination', 50);
         $offset = ($page - 1) * $limit;
 
         $total = count($entries);
         $entries = array_slice($entries, $offset, $limit);
 
-        // HelperList
         $helper = new HelperList();
         $helper->module = $this->module;
         $helper->shopLinkType = '';
@@ -67,18 +53,16 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         $helper->token = Tools::getAdminTokenLite('AdminSj4webFirewallLog');
         $helper->currentIndex = AdminController::$currentIndex;
         $helper->show_toolbar = true;
-        // HelperList pagination setup
         $helper->listTotal = $total;
         $helper->tpl_vars['pagination'] = [20, 50, 100, 300];
         $helper->tpl_vars['show_toolbar'] = true;
         $helper->tpl_vars['show_pagination'] = true;
 
-
-        $fields_list = [
+        $fieldsList = [
             'ip' => [
                 'title' => $this->trans('IP Address', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'text',
-                'filter_key' => 'ip'
+                'filter_key' => 'ip',
             ],
             'country' => [
                 'title' => $this->trans('Country', [], 'Modules.Sj4webfirewall.Admin'),
@@ -109,7 +93,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
                 'type' => 'number',
                 'align' => 'center',
                 'search' => false,
-                'filter' => false
+                'filter' => false,
             ],
             'first_seen' => [
                 'title' => $this->trans('First Activity', [], 'Modules.Sj4webfirewall.Admin'),
@@ -130,10 +114,9 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
                 'callback' => 'displayRowActions',
                 'callback_object' => $this,
             ],
-
         ];
-        $this->context->smarty->assign('content', $helper->generateList($entries, $fields_list));
 
+        $this->context->smarty->assign('content', $helper->generateList($entries, $fieldsList));
     }
 
     public function renderList()
@@ -142,7 +125,6 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
 
         return parent::renderList();
     }
-
 
     public function postProcess()
     {
@@ -159,92 +141,65 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
 
         $action = Tools::getValue('action');
         $ip = Tools::getValue('ip');
-
-        if ($action && $ip) {
-            $filepath = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/ip_scores.json';
-            $data = [];
-
-            if (file_exists($filepath)) {
-                $data = json_decode(file_get_contents($filepath), true);
-            }
-
-            $whitelist = json_decode(Configuration::get('SJ4WEB_FW_WHITELIST_IPS'), true) ?: [];
-
-            switch ($action) {
-                case 'resetScore':
-                    if (isset($data[$ip])) {
-                        $data[$ip]['score'] = 0;
-                        unset($data[$ip]['blocked_until']);
-                    }
-                    break;
-
-                case 'deleteIp':
-                    if (isset($data[$ip])) {
-                        unset($data[$ip]);
-                    }
-                    break;
-
-                case 'whitelist':
-                    if (isset($data[$ip])) {
-                        $data[$ip]['whitelisted'] = true;
-                        if (!in_array($ip, $whitelist)) {
-                            $whitelist[] = $ip;
-                            Configuration::updateValue('SJ4WEB_FW_WHITELIST_IPS', json_encode(array_values($whitelist)));
-                        }
-                    }
-                    break;
-
-                case 'unwhitelist':
-                    if (isset($data[$ip])) {
-                        unset($data[$ip]['whitelisted']);
-                        $whitelist = array_filter($whitelist, fn($item) => trim($item) !== $ip);
-                        Configuration::updateValue('SJ4WEB_FW_WHITELIST_IPS', json_encode(array_values($whitelist)));
-                    }
-                    break;
-                case 'forceBlock':
-                    if (isset($data[$ip])) {
-                        $now = time();
-                        $blockDuration = (int)Configuration::get('SJ4WEB_FW_BLOCK_DURATION');
-                        $data[$ip]['blocked_until'] = $now + $blockDuration;
-                    }
-                    break;
-
-                case 'unblockIp':
-                    if (isset($data[$ip]) && isset($data[$ip]['blocked_until'])) {
-                        unset($data[$ip]['blocked_until']);
-                    }
-                    break;
-
-            }
-
-            file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT));
-
-            Tools::redirectAdmin(self::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminSj4webFirewallLog'));
+        if (!$action || !$ip) {
+            return;
         }
+
+        $storage = $this->buildStorage();
+        $whitelist = json_decode((string) Configuration::get('SJ4WEB_FW_WHITELIST_IPS'), true) ?: [];
+
+        switch ($action) {
+            case 'resetScore':
+                $storage->resetIp($ip);
+                break;
+            case 'deleteIp':
+                $storage->deleteIp($ip);
+                break;
+            case 'whitelist':
+                if (!in_array($ip, $whitelist, true)) {
+                    $whitelist[] = $ip;
+                    Configuration::updateValue('SJ4WEB_FW_WHITELIST_IPS', json_encode(array_values($whitelist)));
+                }
+                break;
+            case 'unwhitelist':
+                $whitelist = array_filter($whitelist, function ($item) use ($ip) {
+                    return trim((string) $item) !== $ip;
+                });
+                Configuration::updateValue('SJ4WEB_FW_WHITELIST_IPS', json_encode(array_values($whitelist)));
+                break;
+            case 'forceBlock':
+                $storage->blockIp($ip);
+                break;
+            case 'unblockIp':
+                $storage->unblockIp($ip);
+                break;
+        }
+
+        Tools::redirectAdmin(self::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminSj4webFirewallLog'));
     }
 
     public function displayRowActions($value, $entry)
     {
         $actions = [];
-        $ip = urlencode($entry['ip']);
         $token = Tools::getAdminTokenLite('AdminSj4webFirewallLog');
 
-        // Always available
         $actions[] = $this->displayResetScoreLink($token, $entry['ip']);
         $actions[] = $this->displayDeleteIpLink($token, $entry['ip']);
-        // Only if whitelisted
+
         if (!empty($entry['whitelisted'])) {
             $actions[] = $this->displayUnwhitelistLink($token, $entry['ip']);
         } else {
             $actions[] = $this->displayWhitelistLink($token, $entry['ip']);
         }
-        // Only if blocked
+
         if ($entry['status'] === 'blocked') {
             $actions[] = $this->displayUnblockLink($token, $entry['ip']);
         } else {
             $actions[] = $this->displayForceBlockLink($token, $entry['ip']);
         }
+
         $actions[] = $this->displayViewLogsLink($token, $entry['ip']);
+
         return '<div class="btn-group">' . implode(' ', $actions) . '</div>';
     }
 
@@ -264,6 +219,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function displayResetScoreLink($token, $id, $name = null)
     {
         $ip = urlencode($id);
+
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=resetScore&ip=' . $ip . '" 
                    title="' . $this->trans('Reset score', [], 'Modules.Sj4webfirewall.Admin') . '"
                    class="btn btn-sm btn-outline-sjprimary"><i class="material-icons">restart_alt</i></a>';
@@ -272,6 +228,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function displayDeleteIpLink($token, $id, $name = null)
     {
         $ip = urlencode($id);
+
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=deleteIp&ip=' . $ip . '" 
             title="' . $this->trans('Delete IP', [], 'Modules.Sj4webfirewall.Admin') . '" onclick="return confirm(\'' . $this->trans('Delete this IP?', [], 'Modules.Sj4webfirewall.Admin') . '\');"
             class="btn btn-sm btn-outline-sjdanger"><i class="material-icons">delete</i></a>';
@@ -280,6 +237,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function displayWhitelistLink($token, $id, $name = null)
     {
         $ip = urlencode($id);
+
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=whitelist&ip=' . $ip . '" 
                 title="' . $this->trans('Whitelist this IP', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-sjsuccess">
@@ -289,6 +247,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function displayUnwhitelistLink($token, $id, $name = null)
     {
         $ip = urlencode($id);
+
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=unwhitelist&ip=' . $ip . '" 
                 title="' . $this->trans('Remove from whitelist', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-sjwarning">
@@ -298,6 +257,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function displayForceBlockLink($token, $id, $name = null)
     {
         $ip = urlencode($id);
+
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=forceBlock&ip=' . $ip . '" 
                 title="' . $this->trans('Force block', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-dark">
@@ -307,6 +267,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function displayUnblockLink($token, $id, $name = null)
     {
         $ip = urlencode($id);
+
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=unblockIp&ip=' . $ip . '" 
                 title="' . $this->trans('Unblock IP', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-sjsecondary">
@@ -316,27 +277,17 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
     public function displayViewLogsLink($token, $id, $name = null)
     {
         $ip = urlencode($id);
+
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&viewlogs=1&ip=' . $ip . '" 
                 title="' . $this->trans('View logs', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-sjinfo">
         <i class="material-icons">visibility</i></a>';
     }
 
-    protected function renderLogsView($ip)
+    protected function renderLogsView(FirewallStorage $storage, $ip)
     {
         $this->meta_title = $this->trans('Logs for IP: %ip%', ['%ip%' => $ip], 'Modules.Sj4webfirewall.Admin');
-
-        $filepath = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/ip_scores.json';
-        $logs = [];
-
-        if (file_exists($filepath)) {
-            $json = file_get_contents($filepath);
-            $data = json_decode($json, true);
-
-            if (isset($data[$ip]['log']) && is_array($data[$ip]['log'])) {
-                $logs = $data[$ip]['log'];
-            }
-        }
+        $logs = $storage->getLogsForIp($ip);
 
         $this->context->smarty->assign([
             'ip' => $ip,
@@ -347,119 +298,118 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         $this->setTemplate('logs_view.tpl');
     }
 
-    /**
-     * @param array $data
-     * @param array $entries
-     * @return array
-     */
-    public function getEntries(array $data, array $entries): array
+    protected function markWhitelistedEntries(array $entries)
     {
-        $storage = new FirewallStorage(
-            (int)Configuration::get('SJ4WEB_FW_SCORE_LIMIT_BLOCK'),
-            (int)Configuration::get('SJ4WEB_FW_SCORE_LIMIT_SLOW'),
-            (int)Configuration::get('SJ4WEB_FW_BLOCK_DURATION'),
-            (int)Configuration::get('SJ4WEB_FW_ALERT_THRESHOLD')
+        $whitelist = json_decode((string) Configuration::get('SJ4WEB_FW_WHITELIST_IPS'), true) ?: [];
+        foreach ($entries as &$entry) {
+            $entry['whitelisted'] = in_array($entry['ip'], $whitelist, true);
+        }
+        unset($entry);
+
+        return $entries;
+    }
+
+    protected function buildStorage()
+    {
+        return new FirewallStorage(
+            (int) Configuration::get('SJ4WEB_FW_SCORE_LIMIT_BLOCK'),
+            (int) Configuration::get('SJ4WEB_FW_SCORE_LIMIT_SLOW'),
+            (int) Configuration::get('SJ4WEB_FW_BLOCK_DURATION'),
+            (int) Configuration::get('SJ4WEB_FW_ALERT_THRESHOLD'),
+            '',
+            null,
+            (bool) Configuration::get('SJ4WEB_FW_ALERT_EMAIL_ENABLED')
         );
-
-        foreach ($data as $ip => $info) {
-            $entries[] = [
-                'ip' => $ip,
-                'country' => $info['country'] ?? '-',
-                'score' => (int)$info['score'],
-                'status' => $storage->getStatusForIp($ip), // Ici la vraie méthode
-                'count' => $info['count'] ?? 0,
-                'log' => isset($info['log']) ? (array)$info['log'] : [],
-                'last_log' => isset($info['log']) && count($info['log']) > 0
-                    ? end($info['log'])['time'] . ' - ' . end($info['log'])['reason']
-                    : '-',
-                'first_seen' => isset($info['first_seen']) ? date('Y-m-d H:i:s', $info['first_seen']) : '-',
-                'updated_at' => isset($info['updated_at']) ? date('Y-m-d H:i:s', $info['updated_at']) : '-',
-                'whitelisted' => !empty($info['whitelisted']),
-                'actions' => [], // Placeholder pour les actions
-            ];
-        }
-        return $entries;
     }
 
-    /**
-     * @param array $entries
-     * @return array
-     */
-    public function applyFilters(array $entries): array
+    public function applyFilters(array $entries)
     {
-// Les filtres
-        $filter_ip = trim(Tools::getValue('firewall_logsFilter_ip', ''));
-        $filter_country = trim(Tools::getValue('firewall_logsFilter_country', ''));
-        $filter_status = trim(Tools::getValue('firewall_logsFilter_status', ''));
-        $filter_first_seen = Tools::getValue('firewall_logsFilter_first_seen', []);
-        $filter_logs = trim(Tools::getValue('firewall_logsFilter_last_log', ''));
-        $filter_updated_atto = Tools::getValue('firewall_logsFilter_updated_at', []);
+        $filterIp = trim((string) Tools::getValue('firewall_logsFilter_ip', ''));
+        $filterCountry = trim((string) Tools::getValue('firewall_logsFilter_country', ''));
+        $filterStatus = trim((string) Tools::getValue('firewall_logsFilter_status', ''));
+        $filterFirstSeen = Tools::getValue('firewall_logsFilter_first_seen', []);
+        $filterLogs = trim((string) Tools::getValue('firewall_logsFilter_last_log', ''));
+        $filterUpdatedAtTo = Tools::getValue('firewall_logsFilter_updated_at', []);
 
-        if ($filter_ip) {
-            $entries = array_filter($entries, function ($entry) use ($filter_ip) {
-                return stripos($entry['ip'], $filter_ip) !== false;
+        if ($filterIp) {
+            $entries = array_filter($entries, function ($entry) use ($filterIp) {
+                return stripos($entry['ip'], $filterIp) !== false;
             });
         }
-        if ($filter_country) {
-            $entries = array_filter($entries, function ($entry) use ($filter_country) {
-                return strtolower($entry['country']) === strtolower($filter_country);
+
+        if ($filterCountry) {
+            $entries = array_filter($entries, function ($entry) use ($filterCountry) {
+                return strtolower((string) $entry['country']) === strtolower($filterCountry);
             });
         }
-        if ($filter_status) {
-            $entries = array_filter($entries, function ($entry) use ($filter_status) {
-                return strtolower($entry['status']) === strtolower($filter_status);
+
+        if ($filterStatus) {
+            $entries = array_filter($entries, function ($entry) use ($filterStatus) {
+                return strtolower((string) $entry['status']) === strtolower($filterStatus);
             });
         }
-        $filter_first_seen_from = $filter_first_seen_to = '';
-        if (is_array($filter_first_seen) && count($filter_first_seen) > 0) {
-            $filter_first_seen_from = $filter_first_seen[0];
-            $filter_first_seen_to = ($filter_first_seen[1] ?? '');
+
+        $filterFirstSeenFrom = '';
+        $filterFirstSeenTo = '';
+        if (is_array($filterFirstSeen) && count($filterFirstSeen) > 0) {
+            $filterFirstSeenFrom = $filterFirstSeen[0];
+            $filterFirstSeenTo = $filterFirstSeen[1] ?? '';
         }
-        if ($filter_first_seen_from || $filter_first_seen_to) {
-            $entries = array_filter($entries, function ($entry) use ($filter_first_seen_from, $filter_first_seen_to) {
-                $timestamp = strtotime($entry['first_seen']);
+
+        if ($filterFirstSeenFrom || $filterFirstSeenTo) {
+            $entries = array_filter($entries, function ($entry) use ($filterFirstSeenFrom, $filterFirstSeenTo) {
+                $timestamp = strtotime((string) $entry['first_seen']);
                 $firstSeen = strtotime(date('Y-m-d', $timestamp));
-                if ($filter_first_seen_from && $firstSeen < strtotime($filter_first_seen_from)) {
+
+                if ($filterFirstSeenFrom && $firstSeen < strtotime($filterFirstSeenFrom)) {
                     return false;
                 }
-                if ($filter_first_seen_to && $firstSeen > strtotime($filter_first_seen_to)) {
+                if ($filterFirstSeenTo && $firstSeen > strtotime($filterFirstSeenTo)) {
                     return false;
                 }
+
                 return true;
             });
         }
-        if ($filter_logs) {
-            $entries = array_filter($entries, function ($entry) use ($filter_logs) {
-                return stripos($entry['last_log'], $filter_logs) !== false;
+
+        if ($filterLogs) {
+            $entries = array_filter($entries, function ($entry) use ($filterLogs) {
+                return stripos((string) $entry['last_log'], $filterLogs) !== false;
             });
         }
-        $filter_updated_at = $filter_updated_to = '';
-        if (is_array($filter_updated_atto) && count($filter_updated_atto) > 0) {
-            $filter_updated_at = $filter_updated_atto[0];
-            $filter_updated_to = ($filter_updated_atto[1] ?? '');
+
+        $filterUpdatedAt = '';
+        $filterUpdatedTo = '';
+        if (is_array($filterUpdatedAtTo) && count($filterUpdatedAtTo) > 0) {
+            $filterUpdatedAt = $filterUpdatedAtTo[0];
+            $filterUpdatedTo = $filterUpdatedAtTo[1] ?? '';
         }
-        if ($filter_updated_at || $filter_updated_to) {
-            $entries = array_filter($entries, function ($entry) use ($filter_updated_at, $filter_updated_to) {
-                $timestamp = strtotime($entry['updated_at']);
+
+        if ($filterUpdatedAt || $filterUpdatedTo) {
+            $entries = array_filter($entries, function ($entry) use ($filterUpdatedAt, $filterUpdatedTo) {
+                $timestamp = strtotime((string) $entry['updated_at']);
                 $updatedAt = strtotime(date('Y-m-d', $timestamp));
-                if ($filter_updated_at && $updatedAt < strtotime($filter_updated_at)) {
+
+                if ($filterUpdatedAt && $updatedAt < strtotime($filterUpdatedAt)) {
                     return false;
                 }
-                if ($filter_updated_to && $updatedAt > strtotime($filter_updated_to)) {
+                if ($filterUpdatedTo && $updatedAt > strtotime($filterUpdatedTo)) {
                     return false;
                 }
+
                 return true;
             });
         }
+
         return $entries;
     }
 
-    protected function sortEntries(array $entries): array
+    protected function sortEntries(array $entries)
     {
         $orderby = Tools::getValue('firewall_logsOrderby');
-        $orderway = strtolower(Tools::getValue('firewall_logsOrderway')) === 'desc' ? SORT_DESC : SORT_ASC;
+        $orderway = strtolower((string) Tools::getValue('firewall_logsOrderway')) === 'desc' ? SORT_DESC : SORT_ASC;
 
-        if (!$orderby || !isset($entries[0][$orderby])) {
+        if (!$orderby || empty($entries) || !isset($entries[0][$orderby])) {
             return $entries;
         }
 
@@ -467,18 +417,18 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
             $valA = $a[$orderby];
             $valB = $b[$orderby];
 
-            // Si date format Y-m-d H:i:s
-            if (preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $valA) &&
-                preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $valB)) {
-                $valA = strtotime($valA);
-                $valB = strtotime($valB);
+            if (
+                preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', (string) $valA) &&
+                preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', (string) $valB)
+            ) {
+                $valA = strtotime((string) $valA);
+                $valB = strtotime((string) $valB);
             }
 
-            // Comparaison numérique si possible
             if (is_numeric($valA) && is_numeric($valB)) {
                 $cmp = $valA <=> $valB;
             } else {
-                $cmp = strcmp($valA, $valB);
+                $cmp = strcmp((string) $valA, (string) $valB);
             }
 
             return $orderway === SORT_DESC ? -$cmp : $cmp;
@@ -486,5 +436,4 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
 
         return $entries;
     }
-
 }

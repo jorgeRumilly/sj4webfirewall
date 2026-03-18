@@ -11,7 +11,11 @@ return [
     'SJ4WEB_FW_SAFEBOTS' => [
         'googlebot', 'bingbot', 'duckduckbot', 'msnbot',
         'slurp', 'facebot', 'ia_archiver', 'applebot', 'gptbot',
-        'oai-searchbot', 'chatgpt-user', 'perplexitybot', 'ccbot'
+        'oai-searchbot', 'chatgpt-user', 'perplexitybot', 'ccbot',
+        'googlebot-image', 'googleother', 'google-inspectiontool', 'google-xrawler',
+        'facebookexternalhit', 'meta-externalagent', 'meta-externalads', 'meta-webindexer',
+        'tiktokspider', 'bytespider', 'mojeekbot', 'uptimerobot',
+        'chrome privacy preserving prefetch proxy'
     ],
     'SJ4WEB_FW_MALICIOUSBOTS' => ['ahrefsbot', 'semrushbot', 'mj12bot', 'dotbot', 'rogerbot', 'linkpadbot',
         'screaming frog seo spider', 'sitebulb', 'seokicks-robot', 'linkchecker', 'baiduspider',
@@ -46,7 +50,7 @@ return [
         'zeus', 'zmeu', 'zune', 'zyborg', '80legs', 'curl', 'wget', 'python-requests',
         'python-urllib', 'scrapy', 'httpclient', 'nikto', 'libwww-perl', 'nmap',
         'fimap', 'httprint', 'httprecon', 'zmeu', 'bcrawl', 'blackwidow', 'paros',
-        'w3af', 'nessus', 'whatweb', 'openvas', 'sf', 'jaeles', 'arachni', 'acunetix',
+        'w3af', 'nessus', 'whatweb', 'openvas', 'jaeles', 'arachni', 'acunetix',
         'netsparker', 'dirbuster', 'dirb', 'gobuster', 'webscarab', 'webshag',
         'metasploit', 'sqlninja', 'sqlsus', 'sqlbrute', 'sqlpwn', 'sqliv', 'sqlmap',
         'sqlmate', 'sqlscan', 'sqlsec', 'sqlsploit', 'sqltool', 'sqlworm', 'sqlx',
@@ -58,6 +62,11 @@ return [
     'SJ4WEB_FW_ENABLE_SLEEP' => true,
     'SJ4WEB_FW_SLEEP_DELAY_MS' => 1500,
     'SJ4WEB_FW_LOG_ENABLED' => true,
+    'SJ4WEB_FW_STATE_RETENTION_DAYS' => 60,
+    'SJ4WEB_FW_EVENT_RETENTION_DAYS' => 30,
+    'SJ4WEB_FW_CONTACT_RETENTION_DAYS' => 30,
+    'SJ4WEB_FW_STATS_RETENTION_DAYS' => 180,
+    'SJ4WEB_FW_LAST_CLEANUP_AT' => '',
     'SJ4WEB_FW_ACTIVATE_FIREWALL' => false,
     'SJ4WEB_FW_ALERT_EMAIL_ENABLED' => false,
     'SJ4WEB_FW_ALERT_RECIPIENTS' => '',

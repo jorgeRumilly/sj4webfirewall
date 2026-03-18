@@ -1,70 +1,48 @@
 # SJ4WEB - Firewall pour PrestaShop
 
-**Module de protection avancée contre les bots et attaques pour PrestaShop 8+**.
+Module de protection comportementale pour PrestaShop 8.1+, avec suivi des IP, protection du formulaire de contact, statistiques journalieres et persistance SQL robuste.
 
----
+## Fonctionnalites principales
 
-## 🚀 Fonctionnalités principales
+- Scoring des IP avec ralentissement ou blocage selon le score.
+- Gestion des bots safe et des user-agents suspects.
+- Protection du formulaire de contact via honeypot, temporisation et limites par IP.
+- Statistiques journalieres agregees par IP.
+- Journalisation detaillee facultative dans `logs/firewall.log`.
+- Purge automatique des donnees anciennes pour garder un module stable dans le temps.
 
-- **Détection et scoring des IPs** : ralentissement ou blocage automatique selon comportement.
-- **Gestion des bots** :
-    - Autorisation des bots SEO (Googlebot, Bingbot, etc.).
-    - Blocage des bots malveillants connus.
-- **Système de logs** :
-    - Journalisation quotidienne des accès IP.
-    - Fichier `ip_scores.json` pour le scoring.
-- **Alertes par e-mail** :
-    - Notifications en cas d’activités anormales (trop de 404/403).
-- **Protection formulaire** :
-    - Honeypots.
-    - Délai minimal anti-bot.
-    - Token renforcé contre les soumissions automatiques.
-- **Internationalisation** :
-    - Traductions via le système natif de PrestaShop 8.
-- **Géolocalisation des IPs** :
-    - Détection du pays d’origine via GeoIP (MaxMind GeoLite2).
+## Stockage
 
----
+Depuis la version `1.5.0`, le module n'utilise plus `logs/ip_scores.json` comme source de verite runtime.
 
-## ⚙️ Configuration
+Le stockage principal repose sur des tables SQL dediees :
 
-Depuis le Back-Office de PrestaShop :
-- Définir les IPs et bots autorisés (whitelist).
-- Configurer les seuils de déclenchement du scoring.
-- Activer ou désactiver les notifications par mail.
-- Gérer les actions sur IP : reset, suppression, whitelist.
+- etat courant des IPs
+- evenements detailles
+- tentatives du formulaire de contact
+- statistiques journalieres
 
----
+Le JSON legacy peut etre importe automatiquement lors de l'upgrade.
 
-## ✅ Compatibilité
+## Compatibilite
 
-- **PrestaShop** : `>= 1.7.8.5` et `8.x`
-- **PHP** : `>= 7.3` (recommandé : `7.4` ou `8.1`)
+- PrestaShop : `8.1.x+`
+- PHP : `>= 7.4`
 
----
+## Installation / upgrade
 
-## 🧩 Installation
+1. Copier le module dans `modules/sj4webfirewall`.
+2. Installer le module depuis le BO, ou lancer l'upgrade vers `1.5.0`.
+3. Verifier que les tables SQL du module ont bien ete creees.
+4. Verifier la configuration BO avant activation effective du firewall.
 
-1. Copier le module dans le dossier `/modules/`.
-2. Installer depuis le Back-Office PrestaShop (`Modules > Module Manager`).
-3. Configurer le module via `Paramètres > SJ4WEB - Firewall`.
+## Recommandations de production
 
----
+- Laisser `SJ4WEB_FW_LOG_ENABLED` desactive en routine.
+- Garder le firewall en mode observation avant d'activer les blocages si la configuration bots n'a pas encore ete revue.
+- Verifier les whitelists IP et user-agents apres migration.
+- Nettoyer ensuite les anciens fichiers `tmp_fw_*`, `ip_scores.json` et vieux logs texte une fois la bascule validee.
 
-## 📝 Changelog
+## Changelog
 
-Le changelog complet est disponible dans le fichier [`CHANGELOG.md`](CHANGELOG.md).
-
----
-
-## 📄 Licence
-
-Ce module est distribué sous licence **propriétaire**.  
-© 2025 [SJ4WEB.FR](https://www.sj4web.fr) – Tous droits réservés.
-
----
-
-## 🙋 Support
-
-Pour toute demande de support ou d'amélioration, contactez :  
-📧 [contact@sj4web.fr](mailto:contact@sj4web.fr)
+Le detail des evolutions est disponible dans [CHANGELOG.md](CHANGELOG.md).
