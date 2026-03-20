@@ -41,6 +41,25 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
         ]);
     }
 
+    public function postProcess()
+    {
+        parent::postProcess();
+
+        if (Tools::isSubmit('submitReset' . self::LIST_ID)) {
+            foreach (array_keys($_GET) as $key) {
+                if (strpos($key, self::LIST_ID . 'Filter_') === 0 || strpos($key, $this->getListFilterPrefix() . self::LIST_ID . 'Filter_') === 0) {
+                    unset($_GET[$key]);
+                }
+            }
+
+            foreach (array_keys($_POST) as $key) {
+                if (strpos($key, self::LIST_ID . 'Filter_') === 0 || strpos($key, $this->getListFilterPrefix() . self::LIST_ID . 'Filter_') === 0) {
+                    unset($_POST[$key]);
+                }
+            }
+        }
+    }
+
     public function initPageHeaderToolbar()
     {
         parent::initPageHeaderToolbar();
@@ -194,14 +213,13 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
             ];
         }
 
+        $limit = $this->getPaginationLimit();
         $rows = $this->applyFilters($rows);
         $rows = $this->sortEntries($rows);
 
-        $page = $this->getCurrentPage();
-        $limit = $this->getPaginationLimit();
-        $offset = ($page - 1) * $limit;
-
         $total = count($rows);
+        $page = $this->getCurrentPage($total, $limit);
+        $offset = ($page - 1) * $limit;
         $rows = array_slice($rows, $offset, $limit);
 
         $helper = new HelperList();
@@ -387,8 +405,8 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
 
     protected function sortEntries(array $rows)
     {
-        $orderby = Tools::getValue(self::LIST_ID . 'Orderby');
-        $orderway = strtolower((string) Tools::getValue(self::LIST_ID . 'Orderway')) === 'desc' ? SORT_DESC : SORT_ASC;
+        $orderby = $this->getListOrderBy();
+        $orderway = $this->getListOrderWay();
 
         if (!$orderby || empty($rows) || !array_key_exists($orderby, $rows[0])) {
             return $rows;
@@ -428,12 +446,28 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
             $value = Tools::getValue($legacyKey, $default);
         }
 
+        if (($value === null || $value === '' || $value === []) && isset($this->context->cookie->{$prefixedKey})) {
+            $value = $this->context->cookie->{$prefixedKey};
+        } elseif (($value === null || $value === '' || $value === []) && isset($this->context->cookie->{$legacyKey})) {
+            $value = $this->context->cookie->{$legacyKey};
+        }
+
+        if (is_string($value) && ($key === 'first_seen' || $key === 'last_seen')) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+
         return $value;
     }
 
-    protected function getCurrentPage()
+    protected function getCurrentPage($totalRows, $limit)
     {
-        return max(1, (int) Tools::getValue('submitFilter' . self::LIST_ID, 1));
+        $page = max(1, (int) Tools::getValue('submitFilter' . self::LIST_ID, 1));
+        $totalPages = max(1, (int) ceil($totalRows / max(1, $limit)));
+
+        return min($page, $totalPages);
     }
 
     protected function getPaginationLimit()
@@ -455,6 +489,33 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
     protected function getListFilterPrefix()
     {
         return Tools::strtolower(str_replace(['admin', 'controller'], '', $this->controller_name));
+    }
+
+    protected function getListOrderBy()
+    {
+        $orderBy = (string) Tools::getValue(self::LIST_ID . 'Orderby', '');
+        if ($orderBy !== '') {
+            return $orderBy;
+        }
+
+        $cookieKey = $this->getListFilterPrefix() . self::LIST_ID . 'Orderby';
+
+        return isset($this->context->cookie->{$cookieKey}) ? (string) $this->context->cookie->{$cookieKey} : '';
+    }
+
+    protected function getListOrderWay()
+    {
+        $orderWay = strtolower((string) Tools::getValue(self::LIST_ID . 'Orderway', ''));
+        if ($orderWay !== '') {
+            return $orderWay === 'desc' ? SORT_DESC : SORT_ASC;
+        }
+
+        $cookieKey = $this->getListFilterPrefix() . self::LIST_ID . 'Orderway';
+        $cookieValue = isset($this->context->cookie->{$cookieKey})
+            ? strtolower((string) $this->context->cookie->{$cookieKey})
+            : '';
+
+        return $cookieValue === 'desc' ? SORT_DESC : SORT_ASC;
     }
 
     protected function applyQuickFilter(array $rows, $quickFilter)
