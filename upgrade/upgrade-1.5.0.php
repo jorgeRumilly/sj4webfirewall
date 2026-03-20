@@ -30,6 +30,10 @@ function upgrade_module_1_5_0($module)
         return false;
     }
 
+    if (!$module->synchronizeTabLabels()) {
+        return false;
+    }
+
     if (!FirewallStorage::hasRequiredTables()) {
         return false;
     }

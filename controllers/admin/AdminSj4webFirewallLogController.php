@@ -4,6 +4,8 @@ require_once _PS_MODULE_DIR_ . 'sj4webfirewall/classes/FirewallStorage.php';
 
 class AdminSj4webFirewallLogController extends ModuleAdminController
 {
+    protected const LIST_ID = 'firewall_logs';
+
     public function __construct()
     {
         $this->bootstrap = true;
@@ -36,8 +38,8 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         $entries = $this->applyFilters($entries);
         $entries = $this->sortEntries($entries);
 
-        $page = max(1, (int) Tools::getValue('submitFilterfirewall_logs', 1));
-        $limit = (int) Tools::getValue('firewall_logs_pagination', 50);
+        $page = $this->getCurrentPage();
+        $limit = $this->getPaginationLimit();
         $offset = ($page - 1) * $limit;
 
         $total = count($entries);
@@ -49,12 +51,16 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         $helper->simple_header = false;
         $helper->identifier = 'ip';
         $helper->title = $this->trans('Detected IPs History', [], 'Modules.Sj4webfirewall.Admin');
-        $helper->table = 'firewall_logs';
+        $helper->table = self::LIST_ID;
+        $helper->list_id = self::LIST_ID;
         $helper->token = Tools::getAdminTokenLite('AdminSj4webFirewallLog');
-        $helper->currentIndex = AdminController::$currentIndex;
+        $helper->currentIndex = $this->context->link->getAdminLink('AdminSj4webFirewallLog', false);
         $helper->show_toolbar = true;
         $helper->listTotal = $total;
-        $helper->tpl_vars['pagination'] = [20, 50, 100, 300];
+        $helper->_default_pagination = 50;
+        $helper->_pagination = [20, 50, 100, 300];
+        $helper->actions = ['viewlogs', 'resetScore', 'whitelist', 'unwhitelist', 'forceBlock', 'unblockIp', 'deleteIp'];
+        $helper->list_skip_actions = $this->buildListSkipActions($entries);
         $helper->tpl_vars['show_toolbar'] = true;
         $helper->tpl_vars['show_pagination'] = true;
 
@@ -106,13 +112,6 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
             'updated_at' => [
                 'title' => $this->trans('Last Activity', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'datetime',
-            ],
-            'actions' => [
-                'title' => $this->trans('Actions', [], 'Modules.Sj4webfirewall.Admin'),
-                'search' => false,
-                'orderby' => false,
-                'callback' => 'displayRowActions',
-                'callback_object' => $this,
             ],
         ];
 
@@ -178,31 +177,6 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         Tools::redirectAdmin(self::$currentIndex . '&token=' . Tools::getAdminTokenLite('AdminSj4webFirewallLog'));
     }
 
-    public function displayRowActions($value, $entry)
-    {
-        $actions = [];
-        $token = Tools::getAdminTokenLite('AdminSj4webFirewallLog');
-
-        $actions[] = $this->displayResetScoreLink($token, $entry['ip']);
-        $actions[] = $this->displayDeleteIpLink($token, $entry['ip']);
-
-        if (!empty($entry['whitelisted'])) {
-            $actions[] = $this->displayUnwhitelistLink($token, $entry['ip']);
-        } else {
-            $actions[] = $this->displayWhitelistLink($token, $entry['ip']);
-        }
-
-        if ($entry['status'] === 'blocked') {
-            $actions[] = $this->displayUnblockLink($token, $entry['ip']);
-        } else {
-            $actions[] = $this->displayForceBlockLink($token, $entry['ip']);
-        }
-
-        $actions[] = $this->displayViewLogsLink($token, $entry['ip']);
-
-        return '<div class="btn-group">' . implode(' ', $actions) . '</div>';
-    }
-
     public function getStatusLabel($value, $entry)
     {
         $status = $entry['status'] ?? 'unknown';
@@ -222,7 +196,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
 
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=resetScore&ip=' . $ip . '" 
                    title="' . $this->trans('Reset score', [], 'Modules.Sj4webfirewall.Admin') . '"
-                   class="btn btn-sm btn-outline-sjprimary"><i class="material-icons">restart_alt</i></a>';
+                   class="btn btn-sm btn-outline-sjprimary"><i class="icon-refresh"></i> ' . $this->trans('Reset', [], 'Admin.Actions') . '</a>';
     }
 
     public function displayDeleteIpLink($token, $id, $name = null)
@@ -231,7 +205,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
 
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=deleteIp&ip=' . $ip . '" 
             title="' . $this->trans('Delete IP', [], 'Modules.Sj4webfirewall.Admin') . '" onclick="return confirm(\'' . $this->trans('Delete this IP?', [], 'Modules.Sj4webfirewall.Admin') . '\');"
-            class="btn btn-sm btn-outline-sjdanger"><i class="material-icons">delete</i></a>';
+            class="btn btn-sm btn-outline-sjdanger"><i class="icon-trash"></i> ' . $this->trans('Delete', [], 'Admin.Actions') . '</a>';
     }
 
     public function displayWhitelistLink($token, $id, $name = null)
@@ -241,7 +215,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=whitelist&ip=' . $ip . '" 
                 title="' . $this->trans('Whitelist this IP', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-sjsuccess">
-        <i class="material-icons">check_circle</i></a>';
+        <i class="icon-check"></i> ' . $this->trans('Whitelist', [], 'Modules.Sj4webfirewall.Admin') . '</a>';
     }
 
     public function displayUnwhitelistLink($token, $id, $name = null)
@@ -251,7 +225,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=unwhitelist&ip=' . $ip . '" 
                 title="' . $this->trans('Remove from whitelist', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-sjwarning">
-        <i class="material-icons">block</i></a>';
+        <i class="icon-ban"></i> ' . $this->trans('Unwhitelist', [], 'Modules.Sj4webfirewall.Admin') . '</a>';
     }
 
     public function displayForceBlockLink($token, $id, $name = null)
@@ -261,7 +235,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=forceBlock&ip=' . $ip . '" 
                 title="' . $this->trans('Force block', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-dark">
-        <i class="material-icons">gavel</i></a>';
+        <i class="icon-lock"></i> ' . $this->trans('Block', [], 'Admin.Actions') . '</a>';
     }
 
     public function displayUnblockLink($token, $id, $name = null)
@@ -271,7 +245,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&action=unblockIp&ip=' . $ip . '" 
                 title="' . $this->trans('Unblock IP', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-sjsecondary">
-        <i class="material-icons">lock_open</i></a>';
+        <i class="icon-unlock"></i> ' . $this->trans('Unblock', [], 'Modules.Sj4webfirewall.Admin') . '</a>';
     }
 
     public function displayViewLogsLink($token, $id, $name = null)
@@ -281,7 +255,7 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         return '<a href="' . $this->context->link->getAdminLink('AdminSj4webFirewallLog') . '&viewlogs=1&ip=' . $ip . '" 
                 title="' . $this->trans('View logs', [], 'Modules.Sj4webfirewall.Admin') . '"
                 class="btn btn-sm btn-outline-sjinfo">
-        <i class="material-icons">visibility</i></a>';
+        <i class="icon-search-plus"></i> ' . $this->trans('View', [], 'Admin.Actions') . '</a>';
     }
 
     protected function renderLogsView(FirewallStorage $storage, $ip)
@@ -324,12 +298,12 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
 
     public function applyFilters(array $entries)
     {
-        $filterIp = trim((string) Tools::getValue('firewall_logsFilter_ip', ''));
-        $filterCountry = trim((string) Tools::getValue('firewall_logsFilter_country', ''));
-        $filterStatus = trim((string) Tools::getValue('firewall_logsFilter_status', ''));
-        $filterFirstSeen = Tools::getValue('firewall_logsFilter_first_seen', []);
-        $filterLogs = trim((string) Tools::getValue('firewall_logsFilter_last_log', ''));
-        $filterUpdatedAtTo = Tools::getValue('firewall_logsFilter_updated_at', []);
+        $filterIp = trim((string) $this->getListFilterValue('ip', ''));
+        $filterCountry = trim((string) $this->getListFilterValue('country', ''));
+        $filterStatus = trim((string) $this->getListFilterValue('status', ''));
+        $filterFirstSeen = $this->getListFilterValue('first_seen', []);
+        $filterLogs = trim((string) $this->getListFilterValue('last_log', ''));
+        $filterUpdatedAtTo = $this->getListFilterValue('updated_at', []);
 
         if ($filterIp) {
             $entries = array_filter($entries, function ($entry) use ($filterIp) {
@@ -406,8 +380,8 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
 
     protected function sortEntries(array $entries)
     {
-        $orderby = Tools::getValue('firewall_logsOrderby');
-        $orderway = strtolower((string) Tools::getValue('firewall_logsOrderway')) === 'desc' ? SORT_DESC : SORT_ASC;
+        $orderby = Tools::getValue(self::LIST_ID . 'Orderby');
+        $orderway = strtolower((string) Tools::getValue(self::LIST_ID . 'Orderway')) === 'desc' ? SORT_DESC : SORT_ASC;
 
         if (!$orderby || empty($entries) || !isset($entries[0][$orderby])) {
             return $entries;
@@ -435,5 +409,95 @@ class AdminSj4webFirewallLogController extends ModuleAdminController
         });
 
         return $entries;
+    }
+
+    /**
+     * Determine les actions a masquer ligne par ligne pour rester lisible.
+     *
+     * @return array<string, array<int, string>>
+     */
+    protected function buildListSkipActions(array $entries)
+    {
+        $skipActions = [
+            'whitelist' => [],
+            'unwhitelist' => [],
+            'forceBlock' => [],
+            'unblockIp' => [],
+        ];
+
+        foreach ($entries as $entry) {
+            $ip = (string) $entry['ip'];
+
+            if (!empty($entry['whitelisted'])) {
+                $skipActions['whitelist'][] = $ip;
+            } else {
+                $skipActions['unwhitelist'][] = $ip;
+            }
+
+            if (($entry['status'] ?? 'normal') === 'blocked') {
+                $skipActions['forceBlock'][] = $ip;
+            } else {
+                $skipActions['unblockIp'][] = $ip;
+            }
+        }
+
+        return $skipActions;
+    }
+
+    /**
+     * Retourne la valeur d'un filtre genere par HelperList.
+     *
+     * HelperList prefixe les champs avec le nom du controller sans `Admin`/`Controller`.
+     *
+     * @param mixed $default
+     *
+     * @return mixed
+     */
+    protected function getListFilterValue($key, $default = '')
+    {
+        $prefixedKey = $this->getListFilterPrefix() . self::LIST_ID . 'Filter_' . $key;
+        $legacyKey = self::LIST_ID . 'Filter_' . $key;
+
+        $value = Tools::getValue($prefixedKey, null);
+        if ($value === null) {
+            $value = Tools::getValue($legacyKey, $default);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Retourne la page courante de la liste HelperList.
+     */
+    protected function getCurrentPage()
+    {
+        return max(1, (int) Tools::getValue('submitFilter' . self::LIST_ID, 1));
+    }
+
+    /**
+     * Retourne la limite de pagination courante.
+     */
+    protected function getPaginationLimit()
+    {
+        $limit = (int) Tools::getValue(
+            self::LIST_ID . '_pagination',
+            isset($this->context->cookie->{self::LIST_ID . '_pagination'})
+                ? $this->context->cookie->{self::LIST_ID . '_pagination'}
+                : 50
+        );
+
+        if (!in_array($limit, [20, 50, 100, 300], true)) {
+            $limit = 50;
+        }
+
+        return $limit;
+    }
+
+    /**
+     * Retourne le prefixe interne utilise par HelperList pour ses champs de filtre.
+     */
+    protected function getListFilterPrefix()
+    {
+        return Tools::strtolower(str_replace(['admin', 'controller'], '', $this->controller_name));
     }
 }

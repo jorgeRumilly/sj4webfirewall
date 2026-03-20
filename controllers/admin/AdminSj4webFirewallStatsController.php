@@ -4,6 +4,8 @@ require_once _PS_MODULE_DIR_ . 'sj4webfirewall/classes/FirewallStatsLogger.php';
 
 class AdminSj4webFirewallStatsController extends ModuleAdminController
 {
+    protected const LIST_ID = 'firewall_stats';
+
     public function __construct()
     {
         $this->bootstrap = true;
@@ -33,13 +35,22 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
         $stats = FirewallStatsLogger::getStatsForDate($selectedDate);
 
         $this->context->smarty->assign([
-            'content' => $this->renderToolbar($availableDates, $selectedDate) . $this->renderSummary($stats) . $this->renderStatsList($stats),
+            'content' => $this->renderToolbar($availableDates, $selectedDate)
+                . $this->renderSummary($stats)
+                . $this->renderStatsList($stats, $selectedDate),
         ]);
     }
 
-    /**
-     * Affiche le selecteur de date du BO.
-     */
+    public function initPageHeaderToolbar()
+    {
+        parent::initPageHeaderToolbar();
+
+        $title = $this->trans('Logs journaliers', [], 'Modules.Sj4webfirewall.Admin');
+        $this->toolbar_title = $title;
+        $this->page_header_toolbar_title = $title;
+        $this->meta_title = $title;
+    }
+
     protected function renderToolbar(array $availableDates, $selectedDate)
     {
         $options = '';
@@ -60,7 +71,7 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
 
         return '
             <div class="panel">
-                <h3><i class="material-icons">analytics</i> ' . $this->trans('Daily tracking logs', [], 'Modules.Sj4webfirewall.Admin') . '</h3>
+                <h3><i class="icon-bar-chart"></i> ' . $this->trans('Daily tracking logs', [], 'Modules.Sj4webfirewall.Admin') . '</h3>
                 <form method="get" action="' . $action . '" class="form-inline">
                     <input type="hidden" name="controller" value="AdminSj4webFirewallStats">
                     <input type="hidden" name="token" value="' . htmlspecialchars(Tools::getAdminTokenLite('AdminSj4webFirewallStats'), ENT_QUOTES, 'UTF-8') . '">
@@ -71,15 +82,12 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary">
-                        <i class="material-icons">search</i> ' . $this->trans('Display', [], 'Modules.Sj4webfirewall.Admin') . '
+                        <i class="icon-search"></i> ' . $this->trans('Display', [], 'Modules.Sj4webfirewall.Admin') . '
                     </button>
                 </form>
             </div>';
     }
 
-    /**
-     * Affiche un resume rapide de la journee selectionnee.
-     */
     protected function renderSummary($stats)
     {
         if (empty($stats['ips'])) {
@@ -111,33 +119,59 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
         }
 
         $items = [
-            $this->trans('Tracked IPs', [], 'Modules.Sj4webfirewall.Admin') => $summary['ips'],
-            $this->trans('Total hits', [], 'Modules.Sj4webfirewall.Admin') => $summary['hits'],
-            $this->trans('404 hits', [], 'Modules.Sj4webfirewall.Admin') => $summary['error_404'],
-            $this->trans('403 hits', [], 'Modules.Sj4webfirewall.Admin') => $summary['error_403'],
-            $this->trans('Safe bots', [], 'Modules.Sj4webfirewall.Admin') => $summary['safe'],
-            $this->trans('Suspicious bots', [], 'Modules.Sj4webfirewall.Admin') => $summary['malicious'],
-            $this->trans('Blocked IPs', [], 'Modules.Sj4webfirewall.Admin') => $summary['blocked'],
+            [
+                'label' => $this->trans('Tracked IPs', [], 'Modules.Sj4webfirewall.Admin'),
+                'value' => $summary['ips'],
+                'quick_filter' => '',
+            ],
+            [
+                'label' => $this->trans('Total hits', [], 'Modules.Sj4webfirewall.Admin'),
+                'value' => $summary['hits'],
+                'quick_filter' => 'has_hits',
+            ],
+            [
+                'label' => $this->trans('404 hits', [], 'Modules.Sj4webfirewall.Admin'),
+                'value' => $summary['error_404'],
+                'quick_filter' => 'has_404',
+            ],
+            [
+                'label' => $this->trans('403 hits', [], 'Modules.Sj4webfirewall.Admin'),
+                'value' => $summary['error_403'],
+                'quick_filter' => 'has_403',
+            ],
+            [
+                'label' => $this->trans('Safe bots', [], 'Modules.Sj4webfirewall.Admin'),
+                'value' => $summary['safe'],
+                'quick_filter' => 'bot_safe',
+            ],
+            [
+                'label' => $this->trans('Suspicious bots', [], 'Modules.Sj4webfirewall.Admin'),
+                'value' => $summary['malicious'],
+                'quick_filter' => 'bot_malicious',
+            ],
+            [
+                'label' => $this->trans('Blocked IPs', [], 'Modules.Sj4webfirewall.Admin'),
+                'value' => $summary['blocked'],
+                'quick_filter' => 'blocked',
+            ],
         ];
 
         $html = '<div class="panel"><div class="row">';
-        foreach ($items as $label => $value) {
+        foreach ($items as $item) {
+            $link = $this->buildQuickFilterLink($stats['date'], $item['quick_filter']);
             $html .= '
                 <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6">
-                    <div class="well text-center">
-                        <strong style="display:block; font-size:20px;">' . (int) $value . '</strong>
-                        <span>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</span>
-                    </div>
+                    <a href="' . htmlspecialchars($link, ENT_QUOTES, 'UTF-8') . '" class="well text-center" style="display:block; color:inherit; text-decoration:none;">
+                        <strong style="display:block; font-size:20px;">' . (int) $item['value'] . '</strong>
+                        <span>' . htmlspecialchars($item['label'], ENT_QUOTES, 'UTF-8') . '</span>
+                    </a>
                 </div>';
         }
 
         return $html . '</div></div>';
     }
 
-    /**
-     * Construit la liste exploitable des IPs pour la date choisie.
-     */
-    protected function renderStatsList($stats)
+    protected function renderStatsList($stats, $selectedDate)
     {
         if (empty($stats['ips'])) {
             return '';
@@ -160,79 +194,107 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
             ];
         }
 
+        $rows = $this->applyFilters($rows);
+        $rows = $this->sortEntries($rows);
+
+        $page = $this->getCurrentPage();
+        $limit = $this->getPaginationLimit();
+        $offset = ($page - 1) * $limit;
+
+        $total = count($rows);
+        $rows = array_slice($rows, $offset, $limit);
+
         $helper = new HelperList();
         $helper->module = $this->module;
         $helper->shopLinkType = '';
         $helper->simple_header = false;
         $helper->identifier = 'ip';
         $helper->title = $this->trans('Traffic by IP', [], 'Modules.Sj4webfirewall.Admin');
-        $helper->table = 'sj4web_firewall_stats';
+        $helper->table = self::LIST_ID;
+        $helper->list_id = self::LIST_ID;
         $helper->token = Tools::getAdminTokenLite('AdminSj4webFirewallStats');
-        $helper->currentIndex = AdminController::$currentIndex;
-        $helper->show_toolbar = false;
-        $helper->listTotal = count($rows);
-        $helper->tpl_vars['show_pagination'] = false;
+        $helper->currentIndex = $this->buildStatsListIndex($selectedDate);
+        $helper->show_toolbar = true;
+        $helper->listTotal = $total;
+        $helper->_default_pagination = 50;
+        $helper->_pagination = [20, 50, 100, 300];
+        $helper->tpl_vars['show_toolbar'] = true;
+        $helper->tpl_vars['show_pagination'] = true;
 
         $fieldsList = [
             'ip' => [
                 'title' => $this->trans('IP Address', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'text',
+                'filter_key' => 'ip',
             ],
             'type' => [
                 'title' => $this->trans('Type', [], 'Modules.Sj4webfirewall.Admin'),
-                'type' => 'text',
+                'type' => 'select',
+                'list' => [
+                    'human' => $this->trans('Human', [], 'Modules.Sj4webfirewall.Admin'),
+                    'bot_safe' => $this->trans('Safe bot', [], 'Modules.Sj4webfirewall.Admin'),
+                    'bot_malicious' => $this->trans('Suspicious bot', [], 'Modules.Sj4webfirewall.Admin'),
+                    'blocked' => $this->trans('Blocked', [], 'Modules.Sj4webfirewall.Admin'),
+                ],
                 'callback' => 'formatType',
                 'callback_object' => $this,
+                'filter_key' => 'type',
             ],
             'bot_name' => [
                 'title' => $this->trans('Bot', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'text',
+                'filter_key' => 'bot_name',
             ],
             'country' => [
                 'title' => $this->trans('Country', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'text',
                 'align' => 'center',
+                'filter_key' => 'country',
             ],
             'access_count' => [
                 'title' => $this->trans('Hits', [], 'Modules.Sj4webfirewall.Admin'),
-                'type' => 'number',
+                'type' => 'text',
                 'align' => 'center',
+                'filter_key' => 'access_count',
             ],
             'error_404_count' => [
                 'title' => $this->trans('404', [], 'Modules.Sj4webfirewall.Admin'),
-                'type' => 'number',
+                'type' => 'text',
                 'align' => 'center',
+                'filter_key' => 'error_404_count',
             ],
             'error_403_count' => [
                 'title' => $this->trans('403', [], 'Modules.Sj4webfirewall.Admin'),
-                'type' => 'number',
+                'type' => 'text',
                 'align' => 'center',
+                'filter_key' => 'error_403_count',
             ],
             'score' => [
                 'title' => $this->trans('Score', [], 'Modules.Sj4webfirewall.Admin'),
-                'type' => 'number',
+                'type' => 'text',
                 'align' => 'center',
+                'filter_key' => 'score',
             ],
             'first_seen' => [
                 'title' => $this->trans('First Seen', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'datetime',
+                'filter_key' => 'first_seen',
             ],
             'last_seen' => [
                 'title' => $this->trans('Last Seen', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'datetime',
+                'filter_key' => 'last_seen',
             ],
             'user_agent' => [
                 'title' => $this->trans('User-Agent', [], 'Modules.Sj4webfirewall.Admin'),
                 'type' => 'text',
+                'filter_key' => 'user_agent',
             ],
         ];
 
         return '<div class="panel">' . $helper->generateList($rows, $fieldsList) . '</div>';
     }
 
-    /**
-     * Rend le type de trafic plus lisible dans le BO.
-     */
     public function formatType($value)
     {
         $labels = [
@@ -243,5 +305,241 @@ class AdminSj4webFirewallStatsController extends ModuleAdminController
         ];
 
         return $labels[$value] ?? (string) $value;
+    }
+
+    protected function applyFilters(array $rows)
+    {
+        $textFields = ['ip', 'bot_name', 'country', 'user_agent'];
+        foreach ($textFields as $field) {
+            $filter = trim((string) $this->getListFilterValue($field, ''));
+            if ($filter === '') {
+                continue;
+            }
+
+            $rows = array_filter($rows, function ($row) use ($field, $filter) {
+                return stripos((string) ($row[$field] ?? ''), $filter) !== false;
+            });
+        }
+
+        $typeFilter = trim((string) $this->getListFilterValue('type', ''));
+        if ($typeFilter !== '') {
+            $rows = array_filter($rows, function ($row) use ($typeFilter) {
+                return strtolower((string) ($row['type'] ?? '')) === strtolower($typeFilter);
+            });
+        }
+
+        $quickFilter = (string) Tools::getValue('stats_quick_filter', '');
+        if ($quickFilter !== '') {
+            $rows = $this->applyQuickFilter($rows, $quickFilter);
+        }
+
+        $numericFields = ['access_count', 'error_404_count', 'error_403_count', 'score'];
+        foreach ($numericFields as $field) {
+            $filter = trim((string) $this->getListFilterValue($field, ''));
+            if ($filter === '') {
+                continue;
+            }
+
+            $rows = array_filter($rows, function ($row) use ($field, $filter) {
+                return $this->matchesNumericFilter((int) ($row[$field] ?? 0), $filter);
+            });
+        }
+
+        $rows = $this->applyDateRangeFilter($rows, 'first_seen');
+        $rows = $this->applyDateRangeFilter($rows, 'last_seen');
+
+        return array_values($rows);
+    }
+
+    protected function applyDateRangeFilter(array $rows, $field)
+    {
+        $range = $this->getListFilterValue($field, []);
+        $from = '';
+        $to = '';
+
+        if (is_array($range) && count($range) > 0) {
+            $from = (string) ($range[0] ?? '');
+            $to = (string) ($range[1] ?? '');
+        }
+
+        if ($from === '' && $to === '') {
+            return $rows;
+        }
+
+        return array_values(array_filter($rows, function ($row) use ($field, $from, $to) {
+            $timestamp = strtotime((string) ($row[$field] ?? ''));
+            if ($timestamp === false) {
+                return false;
+            }
+
+            $day = strtotime(date('Y-m-d', $timestamp));
+            if ($from !== '' && $day < strtotime($from)) {
+                return false;
+            }
+
+            if ($to !== '' && $day > strtotime($to)) {
+                return false;
+            }
+
+            return true;
+        }));
+    }
+
+    protected function sortEntries(array $rows)
+    {
+        $orderby = Tools::getValue(self::LIST_ID . 'Orderby');
+        $orderway = strtolower((string) Tools::getValue(self::LIST_ID . 'Orderway')) === 'desc' ? SORT_DESC : SORT_ASC;
+
+        if (!$orderby || empty($rows) || !array_key_exists($orderby, $rows[0])) {
+            return $rows;
+        }
+
+        usort($rows, function ($a, $b) use ($orderby, $orderway) {
+            $valueA = $a[$orderby];
+            $valueB = $b[$orderby];
+
+            if (
+                preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', (string) $valueA) &&
+                preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', (string) $valueB)
+            ) {
+                $valueA = strtotime((string) $valueA);
+                $valueB = strtotime((string) $valueB);
+            }
+
+            if (is_numeric($valueA) && is_numeric($valueB)) {
+                $comparison = $valueA <=> $valueB;
+            } else {
+                $comparison = strcmp((string) $valueA, (string) $valueB);
+            }
+
+            return $orderway === SORT_DESC ? -$comparison : $comparison;
+        });
+
+        return $rows;
+    }
+
+    protected function getListFilterValue($key, $default = '')
+    {
+        $prefixedKey = $this->getListFilterPrefix() . self::LIST_ID . 'Filter_' . $key;
+        $legacyKey = self::LIST_ID . 'Filter_' . $key;
+
+        $value = Tools::getValue($prefixedKey, null);
+        if ($value === null) {
+            $value = Tools::getValue($legacyKey, $default);
+        }
+
+        return $value;
+    }
+
+    protected function getCurrentPage()
+    {
+        return max(1, (int) Tools::getValue('submitFilter' . self::LIST_ID, 1));
+    }
+
+    protected function getPaginationLimit()
+    {
+        $limit = (int) Tools::getValue(
+            self::LIST_ID . '_pagination',
+            isset($this->context->cookie->{self::LIST_ID . '_pagination'})
+                ? $this->context->cookie->{self::LIST_ID . '_pagination'}
+                : 50
+        );
+
+        if (!in_array($limit, [20, 50, 100, 300], true)) {
+            $limit = 50;
+        }
+
+        return $limit;
+    }
+
+    protected function getListFilterPrefix()
+    {
+        return Tools::strtolower(str_replace(['admin', 'controller'], '', $this->controller_name));
+    }
+
+    protected function applyQuickFilter(array $rows, $quickFilter)
+    {
+        switch ($quickFilter) {
+            case 'has_hits':
+                return array_values(array_filter($rows, function ($row) {
+                    return (int) ($row['access_count'] ?? 0) > 0;
+                }));
+            case 'has_404':
+                return array_values(array_filter($rows, function ($row) {
+                    return (int) ($row['error_404_count'] ?? 0) > 0;
+                }));
+            case 'has_403':
+                return array_values(array_filter($rows, function ($row) {
+                    return (int) ($row['error_403_count'] ?? 0) > 0;
+                }));
+            case 'bot_safe':
+            case 'bot_malicious':
+            case 'blocked':
+                return array_values(array_filter($rows, function ($row) use ($quickFilter) {
+                    return (string) ($row['type'] ?? '') === $quickFilter;
+                }));
+            default:
+                return $rows;
+        }
+    }
+
+    protected function matchesNumericFilter($value, $filter)
+    {
+        $filter = trim((string) $filter);
+        if ($filter === '') {
+            return true;
+        }
+
+        if (preg_match('/^\s*(-?\d+)\s*-\s*(-?\d+)\s*$/', $filter, $matches)) {
+            $min = (int) $matches[1];
+            $max = (int) $matches[2];
+
+            return $value >= min($min, $max) && $value <= max($min, $max);
+        }
+
+        if (preg_match('/^(>=|<=|>|<)\s*(-?\d+)$/', $filter, $matches)) {
+            $operator = $matches[1];
+            $target = (int) $matches[2];
+
+            switch ($operator) {
+                case '>=':
+                    return $value >= $target;
+                case '<=':
+                    return $value <= $target;
+                case '>':
+                    return $value > $target;
+                case '<':
+                    return $value < $target;
+            }
+        }
+
+        return is_numeric($filter) ? $value === (int) $filter : false;
+    }
+
+    protected function buildQuickFilterLink($selectedDate, $quickFilter)
+    {
+        $params = [
+            'stats_date' => (string) $selectedDate,
+        ];
+
+        if ($quickFilter !== '') {
+            $params['stats_quick_filter'] = $quickFilter;
+        }
+
+        return $this->context->link->getAdminLink('AdminSj4webFirewallStats', true, [], $params);
+    }
+
+    protected function buildStatsListIndex($selectedDate)
+    {
+        $params = [
+            'stats_date' => (string) $selectedDate,
+        ];
+
+        $quickFilter = (string) Tools::getValue('stats_quick_filter', '');
+        if ($quickFilter !== '') {
+            $params['stats_quick_filter'] = $quickFilter;
+        }
+
+        return $this->context->link->getAdminLink('AdminSj4webFirewallStats', false, [], $params);
     }
 }

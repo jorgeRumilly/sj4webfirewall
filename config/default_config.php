@@ -2,7 +2,7 @@
 
 return [
     'SJ4WEB_FW_WHITELIST_IPS' => [
-        '88.125.107.215',
+        '88.187.190.211',
         '31.35.195.23',
         '2a01:e0a:55a:f5e0::/64',
         '2001:861:43c0:3170::/64',
@@ -61,7 +61,7 @@ return [
     'SJ4WEB_FW_BLOCK_DURATION' => 3600, // en secondes
     'SJ4WEB_FW_ENABLE_SLEEP' => true,
     'SJ4WEB_FW_SLEEP_DELAY_MS' => 1500,
-    'SJ4WEB_FW_LOG_ENABLED' => true,
+    'SJ4WEB_FW_LOG_ENABLED' => false,
     'SJ4WEB_FW_STATE_RETENTION_DAYS' => 60,
     'SJ4WEB_FW_EVENT_RETENTION_DAYS' => 30,
     'SJ4WEB_FW_CONTACT_RETENTION_DAYS' => 30,

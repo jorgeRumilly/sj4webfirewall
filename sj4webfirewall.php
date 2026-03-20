@@ -47,7 +47,8 @@ class Sj4webFirewall extends Module
             && $this->registerHook('displayHeader')
             && $this->registerHook('actionDispatcherAfter')
             && $this->registerHook('actionContactFormSubmitBefore')
-            && $this->installTabs();
+            && $this->installTabs()
+            && $this->synchronizeTabLabels();
     }
 
     /**
@@ -196,7 +197,7 @@ class Sj4webFirewall extends Module
     public function installTabs()
     {
         if (Tab::getIdFromClassName('AdminSj4webFirewallParent')) {
-            return true;
+            return $this->synchronizeTabLabels();
         }
 
         $parentTab = new Tab();
@@ -256,6 +257,37 @@ class Sj4webFirewall extends Module
         }
 
         return $statsTab->add();
+    }
+
+    /**
+     * Resynchronise les libelles des onglets BO selon les traductions courantes.
+     */
+    public function synchronizeTabLabels()
+    {
+        $labelsByClass = [
+            'AdminSj4webFirewallParent' => $this->trans('SJ4WEB - Firewall', [], 'Modules.Sj4webfirewall.Admin'),
+            'AdminSj4webFirewall' => $this->trans('Configuration', [], 'Modules.Sj4webfirewall.Admin'),
+            'AdminSj4webFirewallLog' => $this->trans('Real-time tracking', [], 'Modules.Sj4webfirewall.Admin'),
+            'AdminSj4webFirewallStats' => $this->trans('Daily tracking logs', [], 'Modules.Sj4webfirewall.Admin'),
+        ];
+
+        foreach ($labelsByClass as $className => $label) {
+            $idTab = (int) Tab::getIdFromClassName($className);
+            if (!$idTab) {
+                continue;
+            }
+
+            $tab = new Tab($idTab);
+            foreach (Language::getLanguages(false) as $lang) {
+                $tab->name[(int) $lang['id_lang']] = $label;
+            }
+
+            if (!$tab->update()) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function uninstallTabs()

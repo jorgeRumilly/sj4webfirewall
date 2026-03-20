@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en-US" target-language="fr-FR" datatype="plaintext" original="file.ext">
+    <body>
+      <trans-unit id="SJ4WEB - Firewall"><source>SJ4WEB - Firewall</source><target>SJ4WEB - Firewall</target></trans-unit>
+      <trans-unit id="Module de filtrage comportemental, IP, bots et pays."><source>Module de filtrage comportemental, IP, bots et pays.</source><target>Module de filtrage comportemental, IP, bots et pays.</target></trans-unit>
+      <trans-unit id="Configuration"><source>Configuration</source><target>Configuration</target></trans-unit>
+      <trans-unit id="Real-time tracking"><source>Real-time tracking</source><target>Suivi temps reel</target></trans-unit>
+      <trans-unit id="Daily tracking logs"><source>Daily tracking logs</source><target>Logs journaliers</target></trans-unit>
+      <trans-unit id="Configuration du pare-feu"><source>Configuration du pare-feu</source><target>Configuration du pare-feu</target></trans-unit>
+      <trans-unit id="Activer le firewall"><source>Activer le firewall</source><target>Activer le firewall</target></trans-unit>
+      <trans-unit id="When disabled, the module keeps tracking traffic but does not apply blocking or slowdown actions."><source>When disabled, the module keeps tracking traffic but does not apply blocking or slowdown actions.</source><target>Quand il est desactive, le module continue de suivre le trafic sans appliquer de blocage ni de ralentissement.</target></trans-unit>
+      <trans-unit id="IP autorisees (whitelist)"><source>IP autorisees (whitelist)</source><target>IP autorisees (whitelist)</target></trans-unit>
+      <trans-unit id="One IP or CIDR range per line."><source>One IP or CIDR range per line.</source><target>Une IP ou une plage CIDR par ligne.</target></trans-unit>
+      <trans-unit id="Bots autorises (safe bots)"><source>Bots autorises (safe bots)</source><target>Bots autorises (safe bots)</target></trans-unit>
+      <trans-unit id="Bots bloques (malicious bots)"><source>Bots bloques (malicious bots)</source><target>Bots bloques (malicious bots)</target></trans-unit>
+      <trans-unit id="One user-agent signature per line. Known social preview and major crawler signatures are kept automatically."><source>One user-agent signature per line. Known social preview and major crawler signatures are kept automatically.</source><target>Une signature user-agent par ligne. Les principales signatures sociales et crawlers majeurs sont conservees automatiquement.</target></trans-unit>
+      <trans-unit id="One suspicious user-agent signature per line. Unsafe legacy patterns are removed automatically on save."><source>One suspicious user-agent signature per line. Unsafe legacy patterns are removed automatically on save.</source><target>Une signature user-agent suspecte par ligne. Les anciens motifs dangereux sont supprimes automatiquement a l enregistrement.</target></trans-unit>
+      <trans-unit id="Trigger thresholds"><source>Trigger thresholds</source><target>Seuils de declenchement</target></trans-unit>
+      <trans-unit id="Score threshold for blocking"><source>Score threshold for blocking</source><target>Seuil de score pour blocage</target></trans-unit>
+      <trans-unit id="Alert threshold"><source>Alert threshold</source><target>Seuil d alerte</target></trans-unit>
+      <trans-unit id="Trigger an email alert when an IP score drops below this value."><source>Trigger an email alert when an IP score drops below this value.</source><target>Declenche un email d alerte quand le score d une IP passe sous cette valeur.</target></trans-unit>
+      <trans-unit id="Blocking duration (s)"><source>Blocking duration (s)</source><target>Duree de blocage (s)</target></trans-unit>
+      <trans-unit id="Activer le ralentissement (sleep)"><source>Activer le ralentissement (sleep)</source><target>Activer le ralentissement (sleep)</target></trans-unit>
+      <trans-unit id="Duree du sleep (ms)"><source>Duree du sleep (ms)</source><target>Duree du sleep (ms)</target></trans-unit>
+      <trans-unit id="Enable detailed text log"><source>Enable detailed text log</source><target>Activer le log texte detaille</target></trans-unit>
+      <trans-unit id="Keep disabled in production unless you need a temporary forensic log file."><source>Keep disabled in production unless you need a temporary forensic log file.</source><target>Laisser desactive en production sauf besoin ponctuel d un log forensic.</target></trans-unit>
+      <trans-unit id="Data retention"><source>Data retention</source><target>Retention des donnees</target></trans-unit>
+      <trans-unit id="Tracked IP retention (days)"><source>Tracked IP retention (days)</source><target>Retention des IP suivies (jours)</target></trans-unit>
+      <trans-unit id="Detailed event retention (days)"><source>Detailed event retention (days)</source><target>Retention des evenements detailles (jours)</target></trans-unit>
+      <trans-unit id="Contact attempt retention (days)"><source>Contact attempt retention (days)</source><target>Retention des tentatives de contact (jours)</target></trans-unit>
+      <trans-unit id="Daily stats retention (days)"><source>Daily stats retention (days)</source><target>Retention des stats journalieres (jours)</target></trans-unit>
+      <trans-unit id="Block by countries"><source>Block by countries</source><target>Blocage par pays</target></trans-unit>
+      <trans-unit id="Pays a bloquer (codes ISO alpha-2)"><source>Pays a bloquer (codes ISO alpha-2)</source><target>Pays a bloquer (codes ISO alpha-2)</target></trans-unit>
+      <trans-unit id="Example: RU, CN, IR."><source>Example: RU, CN, IR.</source><target>Exemple : RU, CN, IR.</target></trans-unit>
+      <trans-unit id="Contact form protection"><source>Contact form protection</source><target>Protection du formulaire de contact</target></trans-unit>
+      <trans-unit id="Activate contact form protection"><source>Activate contact form protection</source><target>Activer la protection du formulaire de contact</target></trans-unit>
+      <trans-unit id="Enable anti-spam checks on the contact form: honeypot, timer and rate limits."><source>Enable anti-spam checks on the contact form: honeypot, timer and rate limits.</source><target>Active les controles anti-spam du formulaire de contact : honeypot, timer et limites de debit.</target></trans-unit>
+      <trans-unit id="Important: manual integration required"><source>Important: manual integration required</source><target>Important : integration manuelle requise</target></trans-unit>
+      <trans-unit id="Email alerts"><source>Email alerts</source><target>Alertes email</target></trans-unit>
+      <trans-unit id="Enable email alerts"><source>Enable email alerts</source><target>Activer les alertes email</target></trans-unit>
+      <trans-unit id="Alert recipient emails"><source>Alert recipient emails</source><target>Emails destinataires des alertes</target></trans-unit>
+      <trans-unit id="Separate multiple email addresses with commas."><source>Separate multiple email addresses with commas.</source><target>Separez plusieurs adresses email par des virgules.</target></trans-unit>
+      <trans-unit id="Enregistrer"><source>Enregistrer</source><target>Enregistrer</target></trans-unit>
+      <trans-unit id="Configuration enregistree"><source>Configuration enregistree</source><target>Configuration enregistree</target></trans-unit>
+      <trans-unit id="Consulter les IP bloquees / scorees"><source>Consulter les IP bloquees / scorees</source><target>Consulter les IP bloquees / scorees</target></trans-unit>
+      <trans-unit id="Consulter les stats journalieres"><source>Consulter les stats journalieres</source><target>Consulter les stats journalieres</target></trans-unit>
+      <trans-unit id="Date"><source>Date</source><target>Date</target></trans-unit>
+      <trans-unit id="Display"><source>Display</source><target>Afficher</target></trans-unit>
+      <trans-unit id="No statistics are available for the selected date."><source>No statistics are available for the selected date.</source><target>Aucune statistique n est disponible pour la date selectionnee.</target></trans-unit>
+      <trans-unit id="Tracked IPs"><source>Tracked IPs</source><target>IPs suivies</target></trans-unit>
+      <trans-unit id="Total hits"><source>Total hits</source><target>Total hits</target></trans-unit>
+      <trans-unit id="404 hits"><source>404 hits</source><target>Hits 404</target></trans-unit>
+      <trans-unit id="403 hits"><source>403 hits</source><target>Hits 403</target></trans-unit>
+      <trans-unit id="Safe bots"><source>Safe bots</source><target>Bots autorises</target></trans-unit>
+      <trans-unit id="Suspicious bots"><source>Suspicious bots</source><target>Bots suspects</target></trans-unit>
+      <trans-unit id="Blocked IPs"><source>Blocked IPs</source><target>IPs bloquees</target></trans-unit>
+      <trans-unit id="Traffic by IP"><source>Traffic by IP</source><target>Trafic par IP</target></trans-unit>
+      <trans-unit id="Detected IPs History"><source>Detected IPs History</source><target>Historique des IP detectees</target></trans-unit>
+      <trans-unit id="IP Address"><source>IP Address</source><target>Adresse IP</target></trans-unit>
+      <trans-unit id="Type"><source>Type</source><target>Type</target></trans-unit>
+      <trans-unit id="Bot"><source>Bot</source><target>Bot</target></trans-unit>
+      <trans-unit id="Country"><source>Country</source><target>Pays</target></trans-unit>
+      <trans-unit id="Hits"><source>Hits</source><target>Hits</target></trans-unit>
+      <trans-unit id="Score"><source>Score</source><target>Score</target></trans-unit>
+      <trans-unit id="First Seen"><source>First Seen</source><target>Premiere detection</target></trans-unit>
+      <trans-unit id="Last Seen"><source>Last Seen</source><target>Derniere detection</target></trans-unit>
+      <trans-unit id="User-Agent"><source>User-Agent</source><target>User-Agent</target></trans-unit>
+      <trans-unit id="Human"><source>Human</source><target>Humain</target></trans-unit>
+      <trans-unit id="Safe bot"><source>Safe bot</source><target>Bot autorise</target></trans-unit>
+      <trans-unit id="Suspicious bot"><source>Suspicious bot</source><target>Bot suspect</target></trans-unit>
+      <trans-unit id="Blocked"><source>Blocked</source><target>Bloque</target></trans-unit>
+      <trans-unit id="Normal"><source>Normal</source><target>Normal</target></trans-unit>
+      <trans-unit id="Slow"><source>Slow</source><target>Ralenti</target></trans-unit>
+      <trans-unit id="Reset score"><source>Reset score</source><target>Reinitialiser le score</target></trans-unit>
+      <trans-unit id="Delete IP"><source>Delete IP</source><target>Supprimer l IP</target></trans-unit>
+      <trans-unit id="Delete this IP?"><source>Delete this IP?</source><target>Supprimer cette IP ?</target></trans-unit>
+      <trans-unit id="Whitelist this IP"><source>Whitelist this IP</source><target>Ajouter cette IP a la whitelist</target></trans-unit>
+      <trans-unit id="Remove from whitelist"><source>Remove from whitelist</source><target>Retirer de la whitelist</target></trans-unit>
+      <trans-unit id="Force block"><source>Force block</source><target>Forcer le blocage</target></trans-unit>
+      <trans-unit id="Unblock IP"><source>Unblock IP</source><target>Debloquer l IP</target></trans-unit>
+      <trans-unit id="View logs"><source>View logs</source><target>Voir les logs</target></trans-unit>
+      <trans-unit id="IP Logs - sj4webfirewall"><source>IP Logs - sj4webfirewall</source><target>Logs IP - sj4webfirewall</target></trans-unit>
+      <trans-unit id="Firewall Alert - Suspicious Activity Detected"><source>Firewall Alert - Suspicious Activity Detected</source><target>Alerte firewall - Activite suspecte detectee</target></trans-unit>
+    </body>
+  </file>
+</xliff>
