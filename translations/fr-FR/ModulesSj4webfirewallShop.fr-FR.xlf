@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en-US" target-language="fr-FR" datatype="plaintext" original="file.ext">
+    <body>
+      <trans-unit id="Maximum number of contact form messages reached for today: %d."><source>Maximum number of contact form messages reached for today: %d.</source><target>Nombre maximal de messages de contact atteint pour aujourd hui : %d.</target></trans-unit>
+      <trans-unit id="You have reached the maximum number of contact form messages allowed for today. Due to spam suspicion, your IP has been blocked."><source>You have reached the maximum number of contact form messages allowed for today. Due to spam suspicion, your IP has been blocked.</source><target>Vous avez atteint le nombre maximal de messages autorises pour aujourd hui. Votre IP a ete bloquee en raison d une suspicion de spam.</target></trans-unit>
+      <trans-unit id="You have reached the maximum number of contact form messages allowed in this period. Please try again later."><source>You have reached the maximum number of contact form messages allowed in this period. Please try again later.</source><target>Vous avez atteint le nombre maximal de messages autorises sur cette periode. Merci de reessayer plus tard.</target></trans-unit>
+    </body>
+  </file>
+</xliff>

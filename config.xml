@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <module>
     <name>sj4webfirewall</name>
-    <displayName>Firewall IP - SJ4WEB</displayName>
-    <version>1.0.0</version>
+    <displayName>SJ4WEB - Firewall</displayName>
+    <version>1.5.0</version>
     <author>SJ4WEB.FR</author>
     <tab>administration</tab>
     <is_configurable>1</is_configurable>

@@ -1,187 +1,142 @@
 <?php
 
+if (!defined('_PS_VERSION_')) {
+    exit;
+}
+
+require_once __DIR__ . '/Sj4webFirewallUserAgentMatcher.php';
+
 class FirewallStatsLogger
 {
-    protected static $logDir = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/stats/';
-
     /**
-     * Enregistre une visite dans le fichier du jour.
-     * @param string $userAgent
-     * @param string $type : 'safe', 'bad', 'human'
-     * @param string|null $botName
+     * Enregistre un resume journalier global.
+     *
+     * Cette methode legacy n'est pas utilisee par le runtime principal,
+     * mais elle est conservee pour compatibilite avec les tests internes.
      */
     public static function logVisit($userAgent, $type = 'human', $botName = null)
     {
-        $date = date('Y-m-d');
-        $file = self::$logDir . $date . '.json';
+        $sql = 'INSERT INTO `' . _DB_PREFIX_ . pSQL(FirewallStorage::getDailySummaryTable()) . '`
+            (`log_date`, `traffic_type`, `bot_name`, `total_count`)
+            VALUES (
+                CURDATE(),
+                "' . pSQL((string) $type) . '",
+                "' . pSQL((string) ($botName ?: '')) . '",
+                1
+            )
+            ON DUPLICATE KEY UPDATE `total_count` = `total_count` + 1';
 
-        if (!is_dir(self::$logDir)) {
-            mkdir(self::$logDir, 0755, true);
-        }
-
-        $data = [];
-
-        if (file_exists($file)) {
-            $data = json_decode(file_get_contents($file), true) ?: [];
-        }
-
-        // total
-        if (!isset($data['total'])) {
-            $data['total'] = 0;
-        }
-        $data['total']++;
-
-        switch ($type) {
-            case 'safe':
-                $section = 'safe_bots';
-                break;
-            case 'bad':
-                $section = 'bad_bots';
-                break;
-            case 'human':
-            default:
-                $section = 'humans';
-                break;
-        }
-
-        if ($section === 'humans') {
-            if (!isset($data['humans'])) {
-                $data['humans'] = 0;
-            }
-            $data['humans']++;
-        } else {
-            if (!$botName) {
-                $botName = 'Unknown';
-            }
-            if (!isset($data[$section])) {
-                $data[$section] = [];
-            }
-            if (!isset($data[$section][$botName])) {
-                $data[$section][$botName] = 0;
-            }
-            $data[$section][$botName]++;
-        }
-
-        file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
+        Db::getInstance()->execute($sql);
     }
 
     /**
-     * Enregistre une visite par IP.
-     * @param $ip
-     * @param $userAgent
-     * @param $type
-     * @param $botName
-     * @param $country
-     * @param $statusCode
-     * @param $score
-     * @return void
+     * Enregistre une visite par IP dans la table d'agregats journaliers.
      */
     public static function logVisitPerIp($ip, $userAgent, $type, $botName = null, $country = null, $statusCode = 200, $score = 0)
     {
-        $date = date('Y-m-d');
-        $logPath = _PS_MODULE_DIR_ . 'sj4webfirewall/logs/stats/' . $date . '.json';
+        $safeIp = pSQL((string) $ip);
+        $safeUserAgent = pSQL((string) $userAgent, true);
+        $safeType = pSQL((string) $type);
+        $safeBotName = pSQL((string) ($botName ?: ''));
+        $safeCountry = $country ? '"' . pSQL((string) $country) . '"' : 'NULL';
+        $error404 = (int) ($statusCode === 404);
+        $error403 = (int) ($statusCode === 403);
 
+        $sql = 'INSERT INTO `' . _DB_PREFIX_ . pSQL(FirewallStorage::getDailyStatTable()) . '`
+            (`log_date`, `ip`, `type`, `bot_name`, `user_agent`, `country`, `access_count`, `error_404_count`, `error_403_count`, `first_seen`, `last_seen`, `score`)
+            VALUES (
+                CURDATE(),
+                "' . $safeIp . '",
+                "' . $safeType . '",
+                "' . $safeBotName . '",
+                "' . $safeUserAgent . '",
+                ' . $safeCountry . ',
+                1,
+                ' . $error404 . ',
+                ' . $error403 . ',
+                NOW(),
+                NOW(),
+                ' . (int) $score . '
+            )
+            ON DUPLICATE KEY UPDATE
+                `type` = VALUES(`type`),
+                `bot_name` = VALUES(`bot_name`),
+                `user_agent` = VALUES(`user_agent`),
+                `country` = COALESCE(VALUES(`country`), `country`),
+                `access_count` = `access_count` + 1,
+                `error_404_count` = `error_404_count` + ' . $error404 . ',
+                `error_403_count` = `error_403_count` + ' . $error403 . ',
+                `last_seen` = NOW(),
+                `score` = ' . (int) $score;
 
-        if (!is_dir(self::$logDir)) {
-            mkdir(self::$logDir, 0755, true);
-        }
-
-        // Lecture existante
-        if (file_exists($logPath)) {
-            $content = json_decode(file_get_contents($logPath), true);
-        } else {
-            $content = [
-                'date' => $date,
-                'ips' => []
-            ];
-        }
-
-        // Initialiser l'IP si inconnue
-        if (!isset($content['ips'][$ip])) {
-            $content['ips'][$ip] = [
-                'type' => $type,
-                'bot_name' => $botName,
-                'user_agent' => $userAgent,
-                'country' => $country,
-                'access_count' => 0,
-                'error_404_count' => 0,
-                'error_403_count' => 0,
-                'first_seen' => date('c'),
-                'last_seen' => date('c'),
-                'score' => $score
-            ];
-        }
-
-        // Mise à jour
-        $content['ips'][$ip]['country'] = ($content['ips'][$ip]['country'] !== $country) ? $country : $content['ips'][$ip]['country'];
-        $content['ips'][$ip]['access_count'] += 1;
-        $content['ips'][$ip]['last_seen'] = date('c');
-        $content['ips'][$ip]['score'] = $score;
-
-        // Incrémentation des erreurs HTTP
-        if ($statusCode === 404) {
-            $content['ips'][$ip]['error_404_count'] += 1;
-        } elseif ($statusCode === 403) {
-            $content['ips'][$ip]['error_403_count'] += 1;
-        }
-
-        // Écriture
-        file_put_contents($logPath, json_encode($content, JSON_PRETTY_PRINT));
+        Db::getInstance()->execute($sql);
     }
 
-
     /**
-     * Détecte le nom du bot dans un user-agent donné à partir d’une liste.
-     * @param string $userAgent
-     * @param array $botList
-     * @return string|null
+     * Detecte le nom du bot correspondant a un user-agent.
      */
     public static function detectBotName($userAgent, array $botList)
     {
-        foreach ($botList as $bot) {
-            $bot = trim($bot);
-            if ($bot && stripos($userAgent, $bot) !== false) {
-                return $bot;
-            }
-        }
-
-        return null;
+        return Sj4webFirewallUserAgentMatcher::detect($userAgent, $botList);
     }
 
     /**
-     * Charge les statistiques d’une date donnée (format YYYY-MM-DD).
-     * @param string $date
-     * @return array|null
+     * Charge les statistiques agregees d'une date donnee.
+     *
+     * @return array<string, mixed>|null
      */
     public static function getStatsForDate($date)
     {
-        $file = self::$logDir . $date . '.json';
-        if (file_exists($file)) {
-            return json_decode(file_get_contents($file), true) ?: [];
+        $sql = 'SELECT `ip`, `type`, `bot_name`, `user_agent`, `country`, `access_count`, `error_404_count`, `error_403_count`, `first_seen`, `last_seen`, `score`
+            FROM `' . _DB_PREFIX_ . pSQL(FirewallStorage::getDailyStatTable()) . '`
+            WHERE `log_date` = "' . pSQL((string) $date) . '"
+            ORDER BY `access_count` DESC';
+        $rows = Db::getInstance()->executeS($sql);
+
+        if (empty($rows)) {
+            return null;
         }
-        return null;
+
+        $stats = [
+            'date' => $date,
+            'ips' => [],
+        ];
+
+        foreach ($rows as $row) {
+            $stats['ips'][$row['ip']] = [
+                'type' => $row['type'],
+                'bot_name' => $row['bot_name'] ?: null,
+                'user_agent' => $row['user_agent'],
+                'country' => $row['country'] ?: null,
+                'access_count' => (int) $row['access_count'],
+                'error_404_count' => (int) $row['error_404_count'],
+                'error_403_count' => (int) $row['error_403_count'],
+                'first_seen' => $row['first_seen'],
+                'last_seen' => $row['last_seen'],
+                'score' => (int) $row['score'],
+            ];
+        }
+
+        return $stats;
     }
 
     /**
-     * Liste tous les fichiers de stats disponibles.
-     * @return array
+     * Liste les dates disponibles dans la nouvelle persistance SQL.
+     *
+     * @return array<int, string>
      */
     public static function listAvailableDates()
     {
-        if (!is_dir(self::$logDir)) {
-            return [];
-        }
-
-        $files = scandir(self::$logDir);
+        $sql = 'SELECT DISTINCT `log_date`
+            FROM `' . _DB_PREFIX_ . pSQL(FirewallStorage::getDailyStatTable()) . '`
+            ORDER BY `log_date` ASC';
+        $rows = Db::getInstance()->executeS($sql);
         $dates = [];
 
-        foreach ($files as $file) {
-            if (preg_match('/^(\d{4}-\d{2}-\d{2})\.json$/', $file, $matches)) {
-                $dates[] = $matches[1];
-            }
+        foreach ($rows as $row) {
+            $dates[] = $row['log_date'];
         }
 
-        sort($dates);
         return $dates;
     }
 }

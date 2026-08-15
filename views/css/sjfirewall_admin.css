@@ -10,9 +10,18 @@ textarea[name^="SJ4WEB_"] {
     overflow-y: auto;
     background-color: #fff;
 }
-td div.btn-group {
-    display: flex !important;
-    justify-content: space-evenly;
+.table .btn-group-action {
+    white-space: nowrap;
+}
+
+.table td.text-right .btn-group {
+    display: inline-block;
+}
+
+.table td.text-right .btn,
+.table td.text-right .btn-group .btn {
+    min-width: 34px;
+    text-align: center;
 }
 .btn-outline-sjprimary {
     color: #007bff!important;
