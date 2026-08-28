@@ -172,7 +172,7 @@ class AdminSj4webFirewallController extends ModuleAdminController
                         'name' => 'SJ4WEB_FW_COUNTRIES_BLOCKED',
                         'cols' => 60,
                         'rows' => 3,
-                        'desc' => $this->trans('Example: RU, CN, IR.', [], 'Modules.Sj4webfirewall.Admin'),
+                        'desc' => $this->trans('One ISO code per line, or separated by commas (RU, CN, IR) — both formats work.', [], 'Modules.Sj4webfirewall.Admin'),
                     ],
                     [
                         'type' => 'html',
@@ -290,7 +290,13 @@ class AdminSj4webFirewallController extends ModuleAdminController
             $value = Tools::getValue($key);
 
             if (in_array($key, Sj4webFirewallConfigHelper::getMultilineKeys(), true)) {
-                $value = array_filter(array_map('trim', explode("\n", (string) $value)));
+                // Pays a bloquer : le texte d'aide promet "RU, CN, IR" (virgules) mais le format
+                // "reel" attendu par les autres champs est une entree par ligne — on accepte les
+                // deux pour ce champ precis (constat du 15/08/2026 : une liste tapee sur une seule
+                // ligne separee par des virgules finissait comme UNE SEULE entree "RU, BR, SG..."
+                // dans le tableau, qui ne matchait jamais aucun code ISO individuel).
+                $separator = $key === 'SJ4WEB_FW_COUNTRIES_BLOCKED' ? '/[\r\n,]+/' : "/\r?\n/";
+                $value = array_filter(array_map('trim', preg_split($separator, (string) $value)));
 
                 if ($key === 'SJ4WEB_FW_SAFEBOTS') {
                     $value = Sj4webFirewallUserAgentMatcher::mergeRecommendedSafeBots($value);
@@ -304,6 +310,16 @@ class AdminSj4webFirewallController extends ModuleAdminController
             }
 
             Configuration::updateValue($key, $value);
+        }
+
+        // Resynchronise le cache plat lu par index.php (blocage pays en amont,
+        // avant meme le kernel PrestaShop) - voir Sj4webFirewallConfigHelper.
+        if (!Sj4webFirewallConfigHelper::writeCountryBlockCache()) {
+            $this->errors[] = $this->trans(
+                'Configuration enregistree, mais le cache de blocage pays (index.php) n\'a pas pu etre ecrit : verifie les droits d\'ecriture sur modules/sj4webfirewall/geo/.',
+                [],
+                'Modules.Sj4webfirewall.Admin'
+            );
         }
 
         $this->confirmations[] = $this->trans('Configuration enregistree', [], 'Modules.Sj4webfirewall.Admin');

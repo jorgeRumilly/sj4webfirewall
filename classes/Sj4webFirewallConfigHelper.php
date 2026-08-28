@@ -89,4 +89,58 @@ class Sj4webFirewallConfigHelper
     {
         return self::$configKeys;
     }
+
+    /**
+     * Ecrit un fichier PHP plat (pays bloques + whitelist) lisible sans DB ni
+     * kernel PrestaShop, pour permettre un blocage geographique tout en amont
+     * (index.php, avant meme le cache de pages) - mesure temporaire en
+     * attendant Cloudflare ou un serveur dedie. A appeler apres chaque
+     * sauvegarde du formulaire d'admin (SJ4WEB_FW_COUNTRIES_BLOCKED /
+     * SJ4WEB_FW_WHITELIST_IPS) pour que le cache reste synchronise.
+     *
+     * Ecriture atomique (fichier temporaire + rename) pour ne jamais laisser
+     * index.php lire un fichier a moitie ecrit.
+     */
+    public static function writeCountryBlockCache()
+    {
+        // Filet de securite : re-eclate au cas ou une entree contiendrait encore des virgules
+        // (ex: config modifiee autrement que par le formulaire d'admin, qui fait deja ce travail
+        // en amont) - constat du 15/08/2026, une liste "RU, BR, SG" tapee sur une seule ligne
+        // finissait comme une seule entree, qui ne matchait jamais aucun code ISO individuel.
+        $countries = [];
+        foreach ((array) self::get('SJ4WEB_FW_COUNTRIES_BLOCKED') as $raw) {
+            foreach (preg_split('/[\r\n,]+/', (string) $raw) as $c) {
+                $countries[] = strtoupper(trim($c));
+            }
+        }
+        $countries = array_values(array_unique(array_filter($countries, function ($c) {
+            return $c !== '';
+        })));
+
+        $whitelist = array_map('trim', (array) self::get('SJ4WEB_FW_WHITELIST_IPS'));
+        $whitelist = array_values(array_filter($whitelist, function ($ip) {
+            return $ip !== '';
+        }));
+
+        $payload = [
+            'generated_at' => date('Y-m-d H:i:s'),
+            'countries' => $countries,
+            'whitelist' => $whitelist,
+        ];
+
+        $geoDir = _PS_MODULE_DIR_ . 'sj4webfirewall/geo';
+        if (!is_dir($geoDir)) {
+            @mkdir($geoDir, 0755, true);
+        }
+
+        $cacheFile = $geoDir . '/country_block_cache.php';
+        $tmpFile = $geoDir . '/.country_block_cache.tmp';
+
+        $written = @file_put_contents($tmpFile, '<?php return ' . var_export($payload, true) . ";\n");
+        if ($written === false) {
+            return false;
+        }
+
+        return @rename($tmpFile, $cacheFile);
+    }
 }
